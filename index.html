@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>筋トレ記録</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="筋トレ記録">
+  <link rel="stylesheet" href="style.css">
+  <script src="lib/chart.umd.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <header class="app-header">
+    <h1 id="page-title">記録</h1>
+  </header>
+
+  <main>
+     <section id="view-record" class="view active">
+      <div class="card">
+        <div class="last-done-title">部位ごとの最終実施日</div>
+        <div id="last-done-list" class="last-done-list"></div>
+      </div>
+      <div class="card date-bar">
+        <button type="button" id="date-prev" class="btn-icon">‹</button>
+        <input type="date" id="record-date">
+        <button type="button" id="date-next" class="btn-icon">›</button>
+      </div>
+
+      <div class="card body-card">
+        <div class="body-title">体重・体脂肪率</div>
+        <div class="body-row">
+          <input id="body-weight" class="set-input" inputmode="decimal" placeholder="体重">
+          <span id="body-weight-unit" class="set-unit">kg</span>
+          <input id="body-fat" class="set-input" inputmode="decimal" placeholder="体脂肪率">
+          <span class="set-unit">%</span>
+          <button type="button" id="body-save" class="btn-small btn-save">保存</button>
+        </div>
+        <div id="body-status" class="body-status"></div>
+      </div>
+
+      <label class="field">
+        <span>種目を追加</span>
+        <select id="exercise-select"></select>
+      </label>
+
+      <div id="record-editor" class="card" hidden>
+        <h3 id="editor-title" class="editor-title"></h3>
+        <div id="previous-box"></div>
+        <div id="set-list"></div>
+        <button type="button" id="add-set" class="btn btn-secondary btn-block">＋ セットを追加</button>
+
+        <label class="field">
+          <span>メモ</span>
+          <textarea id="record-memo" rows="2" placeholder="フォーム、調子など"></textarea>
+        </label>
+
+        <div class="form-buttons">
+          <button type="button" id="editor-cancel" class="btn btn-secondary">キャンセル</button>
+          <button type="button" id="editor-save" class="btn btn-primary">保存</button>
+        </div>
+      </div>
+
+      <h2 class="section-title">この日の記録</h2>
+      <div id="record-list"></div>
+    </section>
+
+    <section id="view-calendar" class="view">
+      <div class="card">
+        <div class="cal-header">
+          <button type="button" id="cal-prev" class="btn-icon">‹</button>
+          <div id="cal-title" class="cal-title"></div>
+          <button type="button" id="cal-next" class="btn-icon">›</button>
+        </div>
+
+        <div class="cal-weekdays">
+          <span>月</span>
+          <span>火</span>
+          <span>水</span>
+          <span>木</span>
+          <span>金</span>
+          <span class="sat">土</span>
+          <span class="sun">日</span>
+        </div>
+
+        <div id="cal-grid" class="cal-grid"></div>
+
+        <div class="cal-footer">
+          <span id="cal-summary"></span>
+          <button type="button" id="cal-today" class="btn-small">今日</button>
+        </div>
+
+        <div id="cal-legend" class="cal-legend"></div>
+      </div>
+
+      <div id="cal-detail"></div>
+    </section>
+
+    <section id="view-graph" class="view">
+      <div class="card">
+        <label class="field">
+          <span>種目</span>
+          <select id="graph-exercise"></select>
+        </label>
+
+        <label class="field">
+          <span>指標</span>
+          <select id="graph-metric"></select>
+        </label>
+
+        <div id="graph-periods" class="segmented">
+          <button type="button" data-period="1m">1か月</button>
+          <button type="button" data-period="3m">3か月</button>
+          <button type="button" data-period="1y">1年</button>
+          <button type="button" data-period="all">全期間</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div id="chart-wrap" class="chart-wrap">
+          <canvas id="graph-canvas"></canvas>
+        </div>
+        <p id="graph-empty" class="empty" hidden></p>
+      </div>
+
+      <div id="graph-summary" class="card graph-summary" hidden></div>
+    </section>
+
+    <section id="view-settings" class="view">
+      <h2 class="section-title">種目の管理</h2>
+
+      <form id="exercise-form" class="card">
+        <label class="field">
+          <span>種目名</span>
+          <input id="exercise-name" type="text" placeholder="例：ベンチプレス" required>
+        </label>
+
+        <label class="field">
+          <span>部位</span>
+          <select id="exercise-part"></select>
+        </label>
+
+        <label class="field">
+          <span>種類</span>
+          <select id="exercise-type">
+            <option value="weight">重量</option>
+            <option value="bodyweight">自重（加重・補助あり）</option>
+            <option value="time">時間（秒）</option>
+          </select>
+        </label>
+
+        <div class="form-buttons">
+          <button type="submit" id="exercise-submit" class="btn btn-primary">追加</button>
+          <button type="button" id="exercise-cancel" class="btn btn-secondary" hidden>キャンセル</button>
+        </div>
+      </form>
+
+      <div id="exercise-list"></div>
+      <h2 class="section-title section-gap">単位</h2>
+      <div class="card">
+        <div id="unit-switch" class="segmented">
+          <button type="button" data-unit="kg">kg</button>
+          <button type="button" data-unit="lbs">lbs</button>
+        </div>
+      </div>
+
+      <h2 class="section-title section-gap">データのバックアップ</h2>
+      <div class="card">
+        <p id="data-summary" class="data-summary"></p>
+        <div class="form-buttons">
+          <button type="button" id="export-button" class="btn btn-primary">書き出す</button>
+          <button type="button" id="import-button" class="btn btn-secondary">読み込む</button>
+        </div>
+        <input type="file" id="import-file" accept=".json,application/json" hidden>
+        <p class="data-note">
+          書き出したファイルは「ファイル」アプリやGoogleドライブなどに保存してください。<br>
+          読み込むと、今のデータはすべて置き換わります。
+        </p>
+      </div>
+    </section>    </section>
+  </main>
+
+  <div id="update-banner" class="update-banner" hidden>
+    <span>新しいバージョンがあります</span>
+    <button type="button" id="update-button" class="btn-small">更新する</button>
+  </div> 
+  
+  <nav class="tab-bar">
+    <button class="tab active" data-view="record">
+      <span class="tab-icon">🏋️</span>
+      <span class="tab-label">記録</span>
+    </button>
+    <button class="tab" data-view="calendar">
+      <span class="tab-icon">📅</span>
+      <span class="tab-label">カレンダー</span>
+    </button>
+    <button class="tab" data-view="graph">
+      <span class="tab-icon">📈</span>
+      <span class="tab-label">グラフ</span>
+    </button>
+    <button class="tab" data-view="settings">
+      <span class="tab-icon">⚙️</span>
+      <span class="tab-label">設定</span>
+    </button>
+  </nav>
+</body>
+</html>
