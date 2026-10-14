@@ -44,7 +44,10 @@
 
       <div class="card gym-card">
         <span class="gym-icon">📍</span>
-        <select id="gym-select" class="gym-select"></select>
+        <button type="button" id="gym-select" class="gym-select">
+          <span id="gym-select-name" class="gym-select-name"></span>
+          <span class="gym-chevron">›</span>
+        </button>
         <span id="gym-empty" class="gym-empty" hidden>ジムは設定タブで登録できます</span>
       </div>
 
@@ -224,6 +227,11 @@
       <!-- ジムの管理 -->
       <div class="settings-caption">ジムの管理</div>
       <div class="card settings-group">
+        <button type="button" id="default-gym-row" class="settings-row">
+          <span class="settings-name">デフォルトのジム</span>
+          <span id="default-gym-name" class="settings-meta"></span>
+          <span class="settings-chevron">›</span>
+        </button>        
         <button type="button" id="gym-add-row" class="settings-row settings-action">＋ ジムを登録</button>
 
         <form id="gym-form" class="settings-form" hidden>
@@ -290,6 +298,18 @@
       <div id="sheet-list"></div>
     </div>
   </div>
+
+  <!-- ジムを選ぶ一覧（下から出てくるシート） -->
+  <div id="gym-sheet" class="sheet-backdrop">
+    <div class="sheet" role="dialog" aria-label="ジムを選ぶ">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <span id="gym-sheet-title" class="sheet-title">ジムを選ぶ</span>
+        <button type="button" id="gym-sheet-close" class="sheet-close" aria-label="閉じる">×</button>
+      </div>
+      <div id="gym-sheet-list" class="sheet-group gym-sheet-list"></div>
+    </div>
+  </div>  
 
   <!-- 日付を選ぶカレンダー（画面の真ん中に出るポップアップ） -->
   <div id="date-picker" class="popup-backdrop">

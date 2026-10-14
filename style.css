@@ -623,12 +623,19 @@ textarea:focus {
 .gym-select {
   flex: 1;
   min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   padding: 8px;
   border: none;
   border-radius: var(--radius-field);
-  background: transparent;
+  background: none;
   color: var(--text);
+  font: inherit;
   font-size: 16px;
+  text-align: left;
+  cursor: pointer;
 }
 
 .gym-empty {
@@ -1295,6 +1302,9 @@ div.settings-row {
   color: var(--muted);
 }
 
+
+
+
 /* ===== 起動画面 ===== */
 .splash {
   position: fixed;
@@ -1714,4 +1724,33 @@ div.settings-row {
   flex-direction: column;
   align-items: center;
   gap: 1px;
+}
+
+/* ===== ジムを選ぶ ===== */
+
+/* ジムの名前が長いときは、はみ出た部分を「…」にする */
+.gym-select-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 「ジム未設定」のときは、灰色の文字にする */
+.gym-select.unset .gym-select-name {
+  color: var(--muted);
+}
+
+.gym-chevron {
+  flex-shrink: 0;
+  font-size: 18px;
+  color: var(--faint);
+}
+
+.gym-sheet-list {
+  margin-top: 12px;
+}
+
+.sheet-check {
+  color: var(--accent);
+  font-weight: bold;
 }

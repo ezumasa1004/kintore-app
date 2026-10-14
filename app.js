@@ -34,7 +34,7 @@ function createDefaultData() {
     bodyWeights: [],
     gyms: [],      // ← 追加
     dayGyms: [],   // ← 追加
-    settings: { unit: "kg", lastExport: null },
+    settings: { unit: "kg", lastExport: null, defaultGymId: null },
   };
 }
 
@@ -74,7 +74,7 @@ function migrateData(d) {
   if (!Array.isArray(d.bodyWeights)) d.bodyWeights = [];
   if (typeof d.settings !== "object" || d.settings === null) d.settings = {};
   if (d.settings.unit !== "lbs") d.settings.unit = "kg";
-  if (d.settings.lastExport === undefined) d.settings.lastExport = null;
+  if (d.settings.defaultGymId === undefined) d.settings.defaultGymId = null;  
 
   return d;
 }
@@ -1651,14 +1651,32 @@ function findPreviousGymId(date) {
   return previous === null ? null : previous.gymId;
 }
 
-// その日のジムがまだ決まっていなければ、前回のジムを入れる
+// その日のジムがまだ決まっていなければ、デフォルトのジムを入れる
 function autoFillGym(date) {
   if (findDayGym(date) !== null) return; // 自分で選んだ日（未設定を含む）は何もしない
-  const gymId = findPreviousGymId(date);
-  if (gymId !== null) setDayGym(date, gymId);
+
+  const gymId = data.settings.defaultGymId;
+  if (gymId !== null && getGym(gymId) !== undefined) {
+    setDayGym(date, gymId);
+  }
 }
 
-// --- 記録タブのジムの選択欄 ---
+// --- 記録タブのジムの欄 ---
+const gymSelectName = document.querySelector("#gym-select-name");
+
+// その日に表示するジムのID（未設定なら null）
+// 自分で選んだジムがあればそれ、なければ今日だけデフォルトのジム
+function displayGymId(date) {
+  const entry = findDayGym(date);
+  if (entry !== null) return entry.gymId;
+
+  const defaultId = data.settings.defaultGymId;
+  if (date === toDateString(new Date()) && defaultId !== null && getGym(defaultId) !== undefined) {
+    return defaultId;
+  }
+  return null;
+}
+
 function renderGymSelect() {
   if (data.gyms.length === 0) {
     gymSelect.hidden = true;
@@ -1668,20 +1686,73 @@ function renderGymSelect() {
   gymSelect.hidden = false;
   gymEmpty.hidden = true;
 
-  let html = `<option value="">ジム未設定</option>`;
-  for (const gym of data.gyms) {
-    html += `<option value="${gym.id}">${escapeHtml(gym.name)}</option>`;
-  }
-  gymSelect.innerHTML = html;
-
-  const entry = findDayGym(recordDate.value);
-  gymSelect.value = entry === null || entry.gymId === null ? "" : entry.gymId;
+  const gymId = displayGymId(recordDate.value);
+  gymSelectName.textContent = gymId === null ? "ジム未設定" : getGym(gymId).name;
+  gymSelect.classList.toggle("unset", gymId === null);
 }
 
-gymSelect.addEventListener("change", () => {
-  const gymId = gymSelect.value === "" ? null : gymSelect.value;
-  setDayGym(recordDate.value, gymId);
+// --- ジムを選ぶシート ---
+const gymSheet = document.querySelector("#gym-sheet");
+const gymSheetTitle = document.querySelector("#gym-sheet-title");
+const gymSheetList = document.querySelector("#gym-sheet-list");
+const gymSheetClose = document.querySelector("#gym-sheet-close");
+
+// "day"：記録タブのその日のジムを選ぶ、"default"：設定のデフォルトのジムを選ぶ
+let gymSheetMode = "day";
+
+function gymSheetItemHtml(id, label, checked) {
+  return `
+    <button type="button" class="sheet-item" data-gym="${id}">
+      <span class="sheet-name">${label}</span>
+      ${checked ? `<span class="sheet-check">✓</span>` : ""}
+    </button>`;
+}
+
+function openGymSheet(mode) {
+  gymSheetMode = mode;
+
+  const isDay = mode === "day";
+  gymSheetTitle.textContent = isDay ? "ジムを選ぶ" : "デフォルトのジム";
+  const currentId = isDay ? displayGymId(recordDate.value) : data.settings.defaultGymId;
+
+  // 一番上は「ジム未設定」（デフォルトのときは「なし」）。ID は空の文字にしておく
+  let html = gymSheetItemHtml("", isDay ? "ジム未設定" : "なし", currentId === null);
+  for (const gym of data.gyms) {
+    html += gymSheetItemHtml(gym.id, escapeHtml(gym.name), gym.id === currentId);
+  }
+  gymSheetList.innerHTML = html;
+
+  gymSheet.classList.add("open");
+  document.body.style.overflow = "hidden";
+}
+
+function closeGymSheet() {
+  gymSheet.classList.remove("open");
+  document.body.style.overflow = "";
+}
+
+gymSelect.addEventListener("click", () => openGymSheet("day"));
+gymSheetClose.addEventListener("click", closeGymSheet);
+
+gymSheet.addEventListener("click", (event) => {
+  // 暗い背景の部分をタップしたら閉じる
+  if (event.target === gymSheet) {
+    closeGymSheet();
+    return;
+  }
+
+  const item = event.target.closest("button[data-gym]");
+  if (item === null) return;
+
+  const gymId = item.dataset.gym === "" ? null : item.dataset.gym;
+  if (gymSheetMode === "day") {
+    setDayGym(recordDate.value, gymId);      // その日のジムとして保存する
+  } else {
+    data.settings.defaultGymId = gymId;      // デフォルトのジムとして保存する
+  }
+
   saveData();
+  closeGymSheet();
   refreshAll();
 });
 
@@ -1690,10 +1761,18 @@ const gymAddRow = document.querySelector("#gym-add-row");
 const gymSubmit = document.querySelector("#gym-submit");
 const gymCancel = document.querySelector("#gym-cancel");
 const gymDelete = document.querySelector("#gym-delete");
+const defaultGymRow = document.querySelector("#default-gym-row");
+const defaultGymName = document.querySelector("#default-gym-name");
+
+defaultGymRow.addEventListener("click", () => openGymSheet("default"));
 
 let gymEditingId = null; // 編集中のジムのID（編集していないときは null）
 
 function renderGymSettings() {
+  // デフォルトのジムの行（ジムが1つもなければ隠す）
+  defaultGymRow.hidden = data.gyms.length === 0;
+  const defaultGym = data.settings.defaultGymId === null ? undefined : getGym(data.settings.defaultGymId);
+  defaultGymName.textContent = defaultGym === undefined ? "なし" : defaultGym.name;  
   let html = "";
 
   for (const gym of data.gyms) {
@@ -1777,7 +1856,7 @@ gymDelete.addEventListener("click", () => {
   if (!confirm(message)) return;
 
   for (const d of usedDays) d.gymId = null;
-  data.gyms = data.gyms.filter((g) => g.id !== gym.id);
+  if (data.settings.defaultGymId === gym.id) data.settings.defaultGymId = null;
 
   resetGymForm();
   saveData();
