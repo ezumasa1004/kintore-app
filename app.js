@@ -15,6 +15,55 @@ const TYPE_NAMES = {
   time: "時間",
 };
 
+// 初めから入れておく種目（新しく使い始める人用。設定の「おすすめの種目を追加」でも使う）
+const PRESET_EXERCISES = [
+  // 胸
+  { name: "ベンチプレス", part: "chest", type: "weight" },
+  { name: "ダンベルプレス", part: "chest", type: "weight" },
+  { name: "チェストプレス", part: "chest", type: "weight" },
+  { name: "インクラインスミスプレス", part: "chest", type: "weight" },
+  { name: "インクラインダンベルプレス", part: "chest", type: "weight" },
+  { name: "ディップス", part: "chest", type: "bodyweight" },
+  { name: "ダンベルフライ", part: "chest", type: "weight" },
+  { name: "ペクトラルフライ", part: "chest", type: "weight" },
+  { name: "ケーブルクロスオーバー", part: "chest", type: "weight" },
+  // 背中
+  { name: "チンニング", part: "back", type: "bodyweight" },
+  { name: "ラットプルダウン", part: "back", type: "weight" },
+  { name: "ベントオーバーロー", part: "back", type: "weight" },
+  { name: "ワンハンドダンベルロー", part: "back", type: "weight" },
+  { name: "シーテッドロー", part: "back", type: "weight" },
+  { name: "ケーブルプルオーバー", part: "back", type: "weight" },
+  { name: "デッドリフト", part: "back", type: "weight" },
+  // 肩
+  { name: "ダンベルショルダープレス", part: "shoulder", type: "weight" },
+  { name: "スミスショルダープレス", part: "shoulder", type: "weight" },
+  { name: "ミリタリープレス", part: "shoulder", type: "weight" },
+  { name: "サイドレイズ", part: "shoulder", type: "weight" },
+  { name: "ケーブルサイドレイズ", part: "shoulder", type: "weight" },
+  { name: "リアレイズ", part: "shoulder", type: "weight" },
+  { name: "リアデルトフライ", part: "shoulder", type: "weight" },
+  { name: "フェイスプル", part: "shoulder", type: "weight" },
+  // 腕
+  { name: "バーベルカール", part: "arm", type: "weight" },
+  { name: "EZバーカール", part: "arm", type: "weight" },
+  { name: "インクラインアームカール", part: "arm", type: "weight" },
+  { name: "プリチャーカール", part: "arm", type: "weight" },
+  { name: "ナローベンチプレス", part: "arm", type: "weight" },
+  { name: "ケーブルプレスダウン", part: "arm", type: "weight" },
+  { name: "ライイングエクステンション", part: "arm", type: "weight" },
+  // 脚
+  { name: "スクワット", part: "leg", type: "weight" },
+  { name: "ハックスクワット", part: "leg", type: "weight" },
+  { name: "レッグプレス", part: "leg", type: "weight" },
+  { name: "レッグエクステンション", part: "leg", type: "weight" },
+  { name: "レッグカール", part: "leg", type: "weight" },
+  // 腹
+  { name: "アブドミナルクランチ", part: "abs", type: "weight" },
+  { name: "アブローラー", part: "abs", type: "bodyweight" },
+  { name: "レッグレイズ", part: "abs", type: "bodyweight" },
+];
+
 const LB_PER_KG = 2.20462; // 1kg = 2.20462lbs
 
 // ===== データの保存・読み込み =====
@@ -24,12 +73,7 @@ const DATA_VERSION = 4; // データの形の版番号。形を変えたら増�
 function createDefaultData() {
   return {
     version: DATA_VERSION,
-    exercises: [
-      { id: createId(), name: "ベンチプレス", part: "chest", type: "weight" },
-      { id: createId(), name: "懸垂", part: "back", type: "bodyweight" },
-      { id: createId(), name: "スクワット", part: "leg", type: "weight" },
-      { id: createId(), name: "プランク", part: "abs", type: "time" },
-    ],
+    exercises: PRESET_EXERCISES.map((p) => ({ id: createId(), name: p.name, part: p.part, type: p.type })),
     records: [],
     bodyWeights: [],
     gyms: [],      // ← 追加
@@ -475,6 +519,31 @@ exerciseForm.addEventListener("submit", (event) => {
 });
 
 exerciseAddRow.addEventListener("click", () => openExerciseFormForAdd());
+// 「おすすめの種目を追加」：まだ登録していない名前の種目だけを追加する
+const presetAddRow = document.querySelector("#preset-add-row");
+
+presetAddRow.addEventListener("click", () => {
+  const names = new Set(data.exercises.map((ex) => ex.name));
+  const missing = PRESET_EXERCISES.filter((p) => !names.has(p.name));
+
+  if (missing.length === 0) {
+    alert("おすすめの種目は、すべて登録されています。");
+    return;
+  }
+
+  const message =
+    `まだ登録されていない、おすすめの種目を${missing.length}個追加します。よろしいですか？\n` +
+    `（今の種目と記録はそのままです）`;
+  if (!confirm(message)) return;
+
+  for (const p of missing) {
+    data.exercises.push({ id: createId(), name: p.name, part: p.part, type: p.type });
+  }
+
+  saveData();
+  refreshAll();
+  alert(`${missing.length}個の種目を追加しました。`);
+});
 exerciseCancel.addEventListener("click", resetExerciseForm);
 exerciseDelete.addEventListener("click", () => deleteExercise(editingId));
 
@@ -514,9 +583,6 @@ const recordDateWord = document.querySelector("#record-date-word");
 const datePrev = document.querySelector("#date-prev");
 const dateNext = document.querySelector("#date-next");
 const addExerciseButton = document.querySelector("#add-exercise-button");
-const exerciseSheet = document.querySelector("#exercise-sheet");
-const sheetList = document.querySelector("#sheet-list");
-const sheetClose = document.querySelector("#sheet-close");
 const recordEditor = document.querySelector("#record-editor");
 const editorHome = document.querySelector("#editor-home");
 const editorTitle = document.querySelector("#editor-title");
@@ -543,70 +609,35 @@ function isDraftChanged() {
   return draft !== null && draftSnapshot() !== draftOriginal;
 }
 
-// --- 種目を選ぶ一覧（下から出てくるシート） ---
-function renderExerciseSheet() {
-  let html = "";
+// --- 「＋ 種目を追加」：部位を選んでから種目を選ぶ ---
+function recordExerciseGroups() {
+  const groups = [];
 
   for (const part of PARTS) {
     const list = data.exercises.filter((ex) => ex.part === part.id);
     if (list.length === 0) continue;
 
-    html += `
-      <div class="sheet-part">
-        <span class="part-dot" style="background:${part.color}"></span>${part.name}
-      </div>
-      <div class="sheet-group">`;
-
-    for (const ex of list) {
-      // 選んでいる日に、すでに記録がある種目か
-      const done = data.records.some(
-        (r) => r.date === recordDate.value && r.exerciseId === ex.id
-      );
-      html += `
-        <button type="button" class="sheet-item" data-id="${ex.id}">
-          <span class="sheet-name">${escapeHtml(ex.name)}</span>
-          ${done ? `<span class="sheet-done">記録済み</span>` : ""}
-          <span class="sheet-chevron">›</span>
-        </button>`;
-    }
-
-    html += `</div>`;
+    groups.push({
+      label: part.name,
+      color: part.color,
+      flat: false,
+      items: list.map((ex) => {
+        // 選んでいる日に、すでに記録がある種目には「記録済み」と表示する
+        const done = data.records.some(
+          (r) => r.date === recordDate.value && r.exerciseId === ex.id
+        );
+        return { value: ex.id, label: ex.name, note: done ? "記録済み" : "" };
+      }),
+    });
   }
 
-  if (html === "") {
-    html = `<p class="empty">種目がありません。設定タブで登録してください。</p>`;
-  }
-
-  sheetList.innerHTML = html;
+  return groups;
 }
 
-function openExerciseSheet() {
-  renderExerciseSheet(); // 開くたびに、最新の状態で作り直す
-  exerciseSheet.classList.add("open");
-  document.body.style.overflow = "hidden"; // 後ろの画面がスクロールしないようにする
-}
-
-function closeExerciseSheet() {
-  exerciseSheet.classList.remove("open");
-  document.body.style.overflow = "";
-}
-
-addExerciseButton.addEventListener("click", openExerciseSheet);
-sheetClose.addEventListener("click", closeExerciseSheet);
-
-exerciseSheet.addEventListener("click", (event) => {
-  // 暗い背景の部分をタップしたら閉じる
-  if (event.target === exerciseSheet) {
-    closeExerciseSheet();
-    return;
-  }
-
-  // 種目をタップしたら、閉じてから入力欄を開く
-  const item = event.target.closest("button[data-id]");
-  if (item === null) return;
-
-  closeExerciseSheet();
-  openEditor(item.dataset.id);
+addExerciseButton.addEventListener("click", () => {
+  openChoiceSheet("部位を選ぶ", recordExerciseGroups(), null, (exerciseId) => {
+    openEditor(exerciseId);
+  });
 });
 
 // --- 日付の表示（例：2026/10/14(水)） ---
@@ -2021,6 +2052,7 @@ function graphExerciseGroups() {
     groups.push({
       label: "からだ",
       color: null,
+      flat: true, // 最初の画面にそのまま並べる
       items: [{ value: "body", label: "体重・体脂肪率" }],
     });
   }
@@ -2034,6 +2066,7 @@ function graphExerciseGroups() {
     groups.push({
       label: part.name,
       color: part.color,
+      flat: false, // 部位を押してから、中の種目を選ぶ
       items: list.map((ex) => ({ value: ex.id, label: ex.name })),
     });
   }
@@ -3358,36 +3391,28 @@ const choiceSheet = document.querySelector("#choice-sheet");
 const choiceSheetTitle = document.querySelector("#choice-sheet-title");
 const choiceSheetList = document.querySelector("#choice-sheet-list");
 const choiceSheetClose = document.querySelector("#choice-sheet-close");
+const choiceSheetBack = document.querySelector("#choice-sheet-back");
 
+let choiceTitle = "";           // 最初の画面の見出し
+let choiceGroups = [];          // 並べるグループ
+let choiceSelected = null;      // 今選んでいる項目の value（✓ を付ける）
+let choiceGroupIndex = null;    // 開いているグループの番号（最初の画面なら null）
 let choiceSheetOnSelect = null; // 項目を選んだときに呼ぶ関数
 
-// title：一覧の見出し
-// groups：[{ label: 見出し, color: 点の色（なければ null）, items: [{ value, label }] }]
-// selected：今選んでいる項目の value（✓ を付ける）
+// title：最初の画面の見出し
+// groups：[{ label, color, flat, items: [{ value, label, note }] }]
+//   flat が true のグループ：最初の画面に、中の項目をそのまま並べる（例：体重）
+//   flat が false のグループ：最初の画面では1行で表示し、押すと中の項目を表示する（例：部位）
+// selected：今選んでいる項目の value
 // onSelect(value)：項目を選んだときの処理
 function openChoiceSheet(title, groups, selected, onSelect) {
-  choiceSheetTitle.textContent = title;
-
-  let html = "";
-  for (const group of groups) {
-    const dot = group.color === null
-      ? ""
-      : `<span class="part-dot" style="background:${group.color}"></span>`;
-    html += `<div class="sheet-part">${dot}${group.label}</div>`;
-
-    html += `<div class="sheet-group">`;
-    for (const item of group.items) {
-      html += `
-        <button type="button" class="sheet-item" data-value="${item.value}">
-          <span class="sheet-name">${escapeHtml(item.label)}</span>
-          ${item.value === selected ? `<span class="sheet-check">✓</span>` : ""}
-        </button>`;
-    }
-    html += `</div>`;
-  }
-  choiceSheetList.innerHTML = html;
-
+  choiceTitle = title;
+  choiceGroups = groups;
+  choiceSelected = selected;
   choiceSheetOnSelect = onSelect;
+  choiceGroupIndex = null; // いつも最初の画面から
+
+  renderChoiceSheet();
   choiceSheet.classList.add("open");
   document.body.style.overflow = "hidden";
 }
@@ -3397,7 +3422,75 @@ function closeChoiceSheet() {
   document.body.style.overflow = "";
 }
 
+// 項目1行分のHTML
+function choiceItemHtml(item) {
+  const note = item.note ? `<span class="sheet-done">${item.note}</span>` : "";
+  const check = item.value === choiceSelected ? `<span class="sheet-check">✓</span>` : "";
+  return `
+    <button type="button" class="sheet-item" data-value="${item.value}">
+      <span class="sheet-name">${escapeHtml(item.label)}</span>
+      ${note}
+      ${check}
+    </button>`;
+}
+
+function renderChoiceSheet() {
+  let html = "";
+
+  if (choiceGroupIndex === null) {
+    // --- 最初の画面 ---
+    choiceSheetTitle.textContent = choiceTitle;
+    choiceSheetBack.hidden = true;
+
+    let groupRows = "";
+    choiceGroups.forEach((group, i) => {
+      if (group.flat) {
+        // 項目をそのまま並べる
+        html += `<div class="sheet-group">${group.items.map(choiceItemHtml).join("")}</div>`;
+        return;
+      }
+
+      // グループを1行で表示する（今選んでいる項目が入っていれば ✓ を付ける）
+      const dot = group.color === null
+        ? ""
+        : `<span class="part-dot" style="background:${group.color}"></span>`;
+      const hasSelected = group.items.some((item) => item.value === choiceSelected);
+
+      groupRows += `
+        <button type="button" class="sheet-item" data-group="${i}">
+          ${dot}
+          <span class="sheet-name">${group.label}</span>
+          <span class="sheet-meta">${group.items.length}種目</span>
+          ${hasSelected ? `<span class="sheet-check">✓</span>` : ""}
+          <span class="sheet-chevron">›</span>
+        </button>`;
+    });
+
+    if (groupRows !== "") {
+      html += `<div class="sheet-group">${groupRows}</div>`;
+    }
+    if (html === "") {
+      html = `<p class="empty">選べる項目がありません。設定タブで種目を登録してください。</p>`;
+    }
+  } else {
+    // --- グループの中の画面 ---
+    const group = choiceGroups[choiceGroupIndex];
+    choiceSheetTitle.textContent = group.label;
+    choiceSheetBack.hidden = false;
+    html = `<div class="sheet-group">${group.items.map(choiceItemHtml).join("")}</div>`;
+  }
+
+  choiceSheetList.innerHTML = html;
+  choiceSheet.querySelector(".sheet").scrollTop = 0; // 画面が変わったら、一番上から表示する
+}
+
 choiceSheetClose.addEventListener("click", closeChoiceSheet);
+
+// 「‹ 部位」：最初の画面に戻る
+choiceSheetBack.addEventListener("click", () => {
+  choiceGroupIndex = null;
+  renderChoiceSheet();
+});
 
 choiceSheet.addEventListener("click", (event) => {
   // 暗い背景の部分をタップしたら閉じる
@@ -3406,13 +3499,21 @@ choiceSheet.addEventListener("click", (event) => {
     return;
   }
 
+  // グループの行：中の項目を表示する
+  const groupRow = event.target.closest("button[data-group]");
+  if (groupRow !== null) {
+    choiceGroupIndex = Number(groupRow.dataset.group);
+    renderChoiceSheet();
+    return;
+  }
+
+  // 項目：選んで閉じる
   const item = event.target.closest("button[data-value]");
   if (item === null) return;
 
   closeChoiceSheet();
   choiceSheetOnSelect(item.dataset.value);
 });
-
 // ===== 起動画面 =====
 const splash = document.querySelector("#splash");
 

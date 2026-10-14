@@ -1812,3 +1812,37 @@ div.settings-row {
 .body-card.saved .body-header {
   margin-bottom: 4px;
 }
+
+/* ===== 選択の一覧：部位を選んでから種目を選ぶ ===== */
+.sheet-header {
+  gap: 8px;
+}
+
+.sheet-title {
+  flex: 1;
+}
+
+/* 「‹ 部位」のボタン */
+.sheet-back {
+  padding: 4px 0;
+  border: none;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+#choice-sheet-list {
+  margin-top: 12px;
+}
+
+/* 一覧のまとまりが続くときは、間を空ける */
+.sheet-group + .sheet-group {
+  margin-top: 12px;
+}
+
+.sheet-meta {
+  font-size: 14px;
+  color: var(--muted);
+}
