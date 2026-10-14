@@ -1,12 +1,12 @@
 // ===== 定数（アプリ内で変わらない値） =====
 const PARTS = [
-  { id: "chest", name: "胸", color: "#ff3b30" },
-  { id: "back", name: "背中", color: "#007aff" },
-  { id: "shoulder", name: "肩", color: "#ff9500" },
-  { id: "arm", name: "腕", color: "#af52de" },
-  { id: "leg", name: "脚", color: "#34c759" },
-  { id: "abs", name: "腹", color: "#ffcc00" },
-  { id: "other", name: "その他", color: "#8e8e93" },
+  { id: "chest", name: "胸", color: "#ff453a" },
+  { id: "back", name: "背中", color: "#0a84ff" },
+  { id: "shoulder", name: "肩", color: "#ff9f0a" },
+  { id: "arm", name: "腕", color: "#bf5af2" },
+  { id: "leg", name: "脚", color: "#30d158" },
+  { id: "abs", name: "腹", color: "#ffd60a" },
+  { id: "other", name: "その他", color: "#98989d" },
 ];
 
 const TYPE_NAMES = {
@@ -801,7 +801,7 @@ editorSave.addEventListener("click", () => {
 editorCancel.addEventListener("click", closeEditor);
 
 // --- スーパーセット ---
-const SUPERSET_COLORS = ["#af52de", "#32ade6", "#ff9500", "#34c759"]; // A, B, C, D の色
+const SUPERSET_COLORS = ["#bf5af2", "#64d2ff", "#ff9f0a", "#ff375f"]; // A, B, C, D の色
 
 // つなぐ相手を選ぶ欄を開いている記録のID（開いていなければ null）
 let supersetPickerFor = null;
@@ -1623,6 +1623,10 @@ gymList.addEventListener("click", (event) => {
 
 // ===== グラフ =====
 
+// グラフの文字と目盛りの線を、黒い背景で見やすい色にする
+Chart.defaults.color = "#8e8e93";
+Chart.defaults.borderColor = "rgba(255, 255, 255, 0.08)";
+
 // 種類ごとの指標。calc は「その日のセット」から値を1つ計算する関数
 // 種類ごとの指標。calc は「その日のセット」から値を1つ計算する関数
 // 最大値の指標はドロップを除き（normalSets）、合計の指標はドロップも含める
@@ -1843,8 +1847,9 @@ function renderGraph() {
       datasets: [
         {
           data: values,
-          borderColor: "#007aff",
-          backgroundColor: "rgba(0, 122, 255, 0.1)",
+          borderColor: "#b6f03c",
+          backgroundColor: "rgba(182, 240, 60, 0.12)",
+          pointBackgroundColor: "#b6f03c",
           fill: true,
           tension: 0.3,
           pointRadius: 4,

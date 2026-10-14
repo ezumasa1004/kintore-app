@@ -1,36 +1,65 @@
+/* ===================================================
+   色や形の設定（ここを変えると、アプリ全体の見た目が変わる）
+   =================================================== */
+:root {
+  --bg: #000000;                          /* 画面の背景 */
+  --card: #1c1c1e;                        /* カード */
+  --field: #2c2c2e;                       /* 入力欄・ボタン */
+  --field-strong: #3a3a3c;                /* 入力欄の上のボタンなど */
+  --line: rgba(255, 255, 255, 0.08);      /* 区切り線 */
+  --text: #ffffff;                        /* 文字 */
+  --muted: #8e8e93;                       /* 補足の文字 */
+  --faint: #636366;                       /* さらに薄い文字 */
+  --accent: #b6f03c;                      /* アクセント（蛍光っぽい黄緑） */
+  --accent-ink: #1c2a05;                  /* アクセントの上に乗せる文字 */
+  --accent-tint: rgba(182, 240, 60, 0.15);/* アクセントの薄い背景 */
+  --danger: #ff453a;                      /* 削除など */
+  --danger-tint: rgba(255, 69, 58, 0.15);
+  --drop: #ff9f0a;                        /* ドロップセット */
+  --radius-card: 20px;                    /* カードの角の丸さ */
+  --radius-field: 10px;                   /* 入力欄の角の丸さ */
+
+  color-scheme: dark; /* 日付の選択画面などを、iPhoneの黒い表示にする */
+}
+
 /* ===== 全体 ===== */
 * {
   box-sizing: border-box;
 }
 
+html,
 body {
-  font-family: -apple-system, "Hiragino Sans", sans-serif;
+  background: var(--bg);
+}
+
+body {
   margin: 0;
-  background: #f5f5f7;
-  color: #222;
+  font-family: -apple-system, "Hiragino Sans", sans-serif;
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
 }
 
-/* ===== ヘッダー ===== */
+[hidden] {
+  display: none !important;
+}
+
+/* ===== 見出し（大きなタイトル） ===== */
 .app-header {
-  padding: 16px;
-  padding-top: calc(16px + env(safe-area-inset-top));
-  background: #fff;
-  border-bottom: 1px solid #ddd;
+  padding: calc(12px + env(safe-area-inset-top)) 20px 4px;
 }
 
 .app-header h1 {
   margin: 0;
-  font-size: 20px;
+  font-size: 34px;
+  font-weight: 700;
 }
 
 /* ===== 中身 ===== */
 main {
-  padding: 16px;
-  padding-bottom: 100px; /* タブバーに隠れないように余白 */
+  padding: 8px 16px 130px; /* 下は浮いたタブバーに隠れないように余白 */
 }
 
-/* 画面：基本は非表示、active のときだけ表示 */
 .view {
   display: none;
 }
@@ -39,16 +68,20 @@ main {
   display: block;
 }
 
-/* ===== 下のタブバー ===== */
+/* ===== 下のタブバー（浮いた丸いバー） ===== */
 .tab-bar {
   position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  left: 16px;
+  right: 16px;
+  bottom: max(12px, env(safe-area-inset-bottom));
   display: flex;
-  background: #fff;
-  border-top: 1px solid #ddd;
-  padding-bottom: env(safe-area-inset-bottom);
+  gap: 4px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 32px;
+  background: rgba(28, 28, 30, 0.85);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
 }
 
 .tab {
@@ -57,16 +90,18 @@ main {
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  padding: 8px 0;
+  padding: 8px 0 6px;
   border: none;
+  border-radius: 26px;
   background: none;
   font: inherit;
-  color: #999;
+  color: var(--text);
   cursor: pointer;
 }
 
 .tab-icon {
-  font-size: 22px;
+  width: 24px;
+  height: 24px;
 }
 
 .tab-label {
@@ -74,45 +109,70 @@ main {
 }
 
 .tab.active {
-  color: #007aff;
+  background: var(--field-strong);
+  color: var(--accent);
   font-weight: bold;
 }
 
 /* ===== 共通パーツ ===== */
-[hidden] {
-  display: none !important;
+.section-title {
+  margin: 8px 4px 12px;
+  font-size: 20px;
+  font-weight: 700;
 }
 
-.section-title {
-  font-size: 16px;
-  margin: 8px 0 12px;
+.section-gap {
+  margin-top: 32px;
 }
 
 .card {
-  background: #fff;
-  border-radius: 12px;
+  margin-bottom: 12px;
   padding: 16px;
-  margin-bottom: 16px;
+  border-radius: var(--radius-card);
+  background: var(--card);
+}
+
+.empty {
+  color: var(--muted);
+  text-align: center;
 }
 
 /* ===== 入力欄 ===== */
 .field {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   margin-bottom: 12px;
   font-size: 13px;
-  color: #666;
+  color: var(--muted);
 }
 
 .field input,
-.field select {
+.field select,
+.field textarea {
   font-size: 16px; /* 16px未満だとiPhoneで勝手にズームされる */
-  padding: 10px;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  background: #fff;
-  color: #222;
+  font-family: inherit;
+  padding: 12px;
+  border: none;
+  border-radius: var(--radius-field);
+  background: var(--field);
+  color: var(--text);
+}
+
+.field textarea {
+  resize: vertical;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--faint);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }
 
 /* ===== ボタン ===== */
@@ -123,150 +183,23 @@ main {
 
 .btn {
   flex: 1;
-  font-size: 16px;
-  padding: 12px;
+  padding: 14px;
   border: none;
-  border-radius: 8px;
+  border-radius: 14px;
+  font: inherit;
+  font-size: 16px;
   cursor: pointer;
 }
 
 .btn-primary {
-  background: #007aff;
-  color: #fff;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: bold;
 }
 
 .btn-secondary {
-  background: #e5e5ea;
-  color: #222;
-}
-
-.btn-small {
-  font-size: 13px;
-  padding: 6px 10px;
-  border: none;
-  border-radius: 6px;
-  background: #e5e5ea;
-  color: #222;
-  cursor: pointer;
-}
-
-.btn-danger {
-  background: #ffe5e5;
-  color: #d00;
-}
-
-/* ===== 種目一覧 ===== */
-.part-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  margin: 16px 0 8px;
-}
-
-.part-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-}
-
-.exercise-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  background: #fff;
-  border-radius: 12px;
-  overflow: hidden;
-}
-
-.exercise-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 16px;
-  border-bottom: 1px solid #eee;
-}
-
-.exercise-item:last-child {
-  border-bottom: none;
-}
-
-.exercise-type {
-  font-size: 12px;
-  color: #999;
-}
-
-.item-buttons {
-  display: flex;
-  gap: 6px;
-}
-
-.empty {
-  color: #999;
-  text-align: center;
-}
-
-/* ===== 記録画面 ===== */
-.date-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px;
-}
-
-/* 日付の表示（見えている部分） */
-.date-display {
-  position: relative;
-  flex: 1;
-  min-width: 0;
-  padding: 8px;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  background: #fff;
-  color: #222;
-  font-size: 16px;
-  text-align: center;
-  cursor: pointer;
-}
-
-/* 標準の日付入力欄：透明にして、表示の上にぴったり重ねる */
-.date-display input {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  padding: 0;
-  border: none;
-  font-size: 16px; /* 16px未満だとiPhoneで勝手にズームされる */
-  opacity: 0;
-  cursor: pointer;
-}
-
-.btn-icon {
-  width: 40px;
-  height: 40px;
-  flex-shrink: 0;
-  font-size: 22px;
-  border: none;
-  border-radius: 8px;
-  background: #e5e5ea;
-  color: #222;
-  cursor: pointer;
-}
-
-.field textarea {
-  font-size: 16px;
-  font-family: inherit;
-  padding: 10px;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  resize: vertical;
-}
-
-.editor-title {
-  margin: 0 0 12px;
-  font-size: 18px;
+  background: var(--field);
+  color: var(--text);
 }
 
 .btn-block {
@@ -275,7 +208,138 @@ main {
   margin-bottom: 12px;
 }
 
-/* セットの入力欄 1行分 */
+.btn-small {
+  padding: 7px 12px;
+  border: none;
+  border-radius: var(--radius-field);
+  background: var(--field);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.btn-danger {
+  background: var(--danger-tint);
+  color: var(--danger);
+}
+
+.btn-save {
+  flex-shrink: 0;
+  margin-left: 4px;
+  padding: 10px 14px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: bold;
+}
+
+.btn-icon {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: var(--radius-field);
+  background: var(--field);
+  color: var(--text);
+  font-size: 22px;
+  cursor: pointer;
+}
+
+.link-button {
+  padding: 0 0 0 8px;
+  border: none;
+  background: none;
+  font: inherit;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+/* ===== 種目の一覧（設定） ===== */
+.part-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 20px 4px 8px;
+  font-size: 15px;
+}
+
+.part-dot {
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+  border-radius: 50%;
+}
+
+.exercise-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-radius: var(--radius-card);
+  background: var(--card);
+  overflow: hidden;
+}
+
+.exercise-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.exercise-item:last-child {
+  border-bottom: none;
+}
+
+.exercise-type {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.item-buttons {
+  display: flex;
+  gap: 6px;
+}
+
+/* ===== 記録画面：日付 ===== */
+.date-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+}
+
+.date-display {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  padding: 8px;
+  font-size: 17px;
+  font-weight: bold;
+  text-align: center;
+  cursor: pointer;
+}
+
+.date-display input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  font-size: 16px;
+  opacity: 0;
+  cursor: pointer;
+}
+
+/* ===== 記録画面：入力 ===== */
+.editor-title {
+  margin: 0 0 12px;
+  font-size: 22px;
+  font-weight: 700;
+}
+
 .set-row {
   display: flex;
   align-items: center;
@@ -287,55 +351,74 @@ main {
   width: 20px;
   flex-shrink: 0;
   font-size: 13px;
-  color: #999;
+  color: var(--muted);
   text-align: center;
 }
 
 .set-input {
   flex: 1;
   min-width: 0;
+  padding: 10px 4px;
+  border: none;
+  border-radius: var(--radius-field);
+  background: var(--field);
+  color: var(--text);
   font-size: 16px;
-  padding: 8px 4px;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  background: #fff;
-  color: #222;
   text-align: center;
 }
 
 .set-sign {
   flex-shrink: 0;
+  padding: 10px 2px;
+  border: none;
+  border-radius: var(--radius-field);
+  background: var(--field);
+  color: var(--text);
   font-size: 16px;
-  padding: 8px 2px;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  background: #fff;
-  color: #222;
 }
 
 .set-unit,
 .set-x {
   flex-shrink: 0;
   font-size: 13px;
-  color: #666;
+  color: var(--muted);
 }
 
-.set-remove {
-  flex-shrink: 0;
+.set-remove,
+.set-drop {
   width: 28px;
   height: 28px;
+  flex-shrink: 0;
   border: none;
   border-radius: 50%;
-  background: #f0f0f0;
-  color: #999;
+  background: var(--field);
+  color: var(--muted);
   font-size: 14px;
   cursor: pointer;
 }
 
-/* この日の記録 */
+/* ドロップセット */
+.set-drop.active {
+  background: var(--drop);
+  color: #000;
+}
+
+.set-drop:disabled {
+  visibility: hidden;
+}
+
+.set-row.drop {
+  padding-left: 12px;
+}
+
+.set-row.drop .set-no,
+.record-sets li.drop .set-no {
+  color: var(--drop);
+}
+
+/* ===== 記録画面：記録カード ===== */
 .record-card {
-  padding: 12px 16px;
-  margin-bottom: 12px;
+  padding: 14px 16px;
 }
 
 .record-head {
@@ -346,13 +429,14 @@ main {
 
 .record-name {
   flex: 1;
+  font-size: 16px;
   font-weight: bold;
 }
 
 .record-sets {
-  list-style: none;
-  margin: 8px 0 0;
+  margin: 10px 0 0;
   padding: 0;
+  list-style: none;
   font-size: 15px;
 }
 
@@ -362,24 +446,44 @@ main {
   padding: 4px 0;
 }
 
+.record-sets li.drop {
+  padding-left: 16px;
+  color: var(--muted);
+}
+
+.record-1rm {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
 .record-memo {
   margin: 8px 0 0;
   font-size: 13px;
-  color: #666;
+  color: var(--muted);
   white-space: pre-wrap;
 }
 
-/* ===== 最終実施日 ===== */
+.pb-badge {
+  padding: 3px 8px;
+  border-radius: 8px;
+  background: var(--accent-tint);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: bold;
+}
+
+/* ===== 記録画面：最終実施日 ===== */
 .last-done-title {
+  margin-bottom: 10px;
   font-size: 13px;
-  color: #666;
-  margin-bottom: 8px;
+  color: var(--muted);
 }
 
 .last-done-list {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 6px 16px;
+  gap: 8px 16px;
 }
 
 .last-done-item {
@@ -394,15 +498,15 @@ main {
 }
 
 .last-done-days {
-  color: #666;
+  color: var(--muted);
 }
 
-/* ===== 前回の記録・自己ベスト ===== */
+/* ===== 記録画面：前回の記録・自己ベスト ===== */
 .previous-box {
-  background: #f5f5f7;
-  border-radius: 8px;
-  padding: 10px 12px;
   margin-bottom: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--field);
   font-size: 13px;
 }
 
@@ -410,32 +514,193 @@ main {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  color: #666;
+  color: var(--muted);
+}
+
+.previous-head .btn-small {
+  background: var(--field-strong);
 }
 
 .previous-sets {
   margin-top: 4px;
-  color: #222;
 }
 
 .previous-best {
   margin-top: 8px;
-  color: #b8860b;
+  color: var(--accent);
 }
 
-.pb-badge {
-  font-size: 11px;
-  font-weight: bold;
-  color: #b8860b;
-  background: #fff6d6;
-  padding: 2px 6px;
-  border-radius: 6px;
+.previous-ss {
+  margin-top: 6px;
+  color: #bf5af2;
 }
 
-.record-1rm {
-  margin: 6px 0 0;
+/* ===== 記録画面：ジム ===== */
+.gym-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+}
+
+.gym-icon {
+  flex-shrink: 0;
+}
+
+.gym-select {
+  flex: 1;
+  min-width: 0;
+  padding: 8px;
+  border: none;
+  border-radius: var(--radius-field);
+  background: transparent;
+  color: var(--text);
+  font-size: 16px;
+}
+
+.gym-empty {
   font-size: 13px;
-  color: #666;
+  color: var(--muted);
+}
+
+/* ===== 記録画面：体重・体脂肪率 ===== */
+.body-card {
+  padding: 14px 16px;
+}
+
+.body-card.saved {
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+}
+
+.body-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.body-title {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.body-saved-badge {
+  padding: 3px 8px;
+  border-radius: 10px;
+  background: var(--accent-tint);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.body-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.body-status {
+  min-height: 16px;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.body-values {
+  display: flex;
+  align-items: baseline;
+  gap: 24px;
+  padding: 2px 0 8px;
+}
+
+.body-value {
+  font-size: 30px;
+  font-weight: bold;
+  color: var(--accent);
+}
+
+.body-value small {
+  margin-left: 2px;
+  font-size: 14px;
+  font-weight: normal;
+  color: var(--muted);
+}
+
+.body-saved-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.body-diff {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* ===== 記録画面：スーパーセット ===== */
+.ss-group {
+  margin-bottom: 16px;
+  padding-left: 10px;
+  border-left: 3px solid var(--ss-color);
+}
+
+.ss-group .record-card:last-child {
+  margin-bottom: 0;
+}
+
+.ss-label {
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: bold;
+  color: var(--ss-color);
+}
+
+.ss-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.ss-picker {
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: 12px;
+  background: var(--field);
+}
+
+.ss-picker-title {
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.ss-picker-empty {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.ss-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin-bottom: 6px;
+  padding: 12px;
+  border: none;
+  border-radius: var(--radius-field);
+  background: var(--field-strong);
+  color: var(--text);
+  font: inherit;
+  font-size: 15px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ss-note {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--muted);
 }
 
 /* ===== カレンダー ===== */
@@ -443,11 +708,11 @@ main {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
 }
 
 .cal-title {
-  font-size: 17px;
+  font-size: 18px;
   font-weight: bold;
 }
 
@@ -459,10 +724,10 @@ main {
 }
 
 .cal-weekdays {
-  font-size: 12px;
-  color: #999;
-  text-align: center;
   margin-bottom: 4px;
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
 }
 
 .cal-cell {
@@ -474,9 +739,9 @@ main {
   gap: 3px;
   padding: 4px 0;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   background: none;
-  color: #222;
+  color: var(--text);
   font: inherit;
   cursor: pointer;
 }
@@ -486,36 +751,36 @@ main {
 }
 
 .cal-cell.trained {
-  background: #eef5ff;
+  background: var(--field);
 }
 
 .cal-cell.selected {
-  outline: 2px solid #007aff;
+  outline: 2px solid var(--accent);
   outline-offset: -2px;
 }
 
 .cal-day {
-  width: 24px;
-  height: 24px;
-  line-height: 24px;
+  width: 26px;
+  height: 26px;
+  line-height: 26px;
+  border-radius: 50%;
   font-size: 14px;
   text-align: center;
-  border-radius: 50%;
 }
 
 .cal-weekdays .sun,
 .cal-cell.sun .cal-day {
-  color: #ff3b30;
+  color: #ff453a;
 }
 
 .cal-weekdays .sat,
 .cal-cell.sat .cal-day {
-  color: #007aff;
+  color: #0a84ff;
 }
 
 .cal-cell.today .cal-day {
-  background: #222;
-  color: #fff;
+  background: var(--accent);
+  color: var(--accent-ink);
   font-weight: bold;
 }
 
@@ -547,7 +812,7 @@ main {
   gap: 6px 12px;
   margin-top: 12px;
   font-size: 12px;
-  color: #666;
+  color: var(--muted);
 }
 
 .cal-legend-item {
@@ -556,39 +821,41 @@ main {
   gap: 4px;
 }
 
-/* カレンダーの下の詳細 */
 .detail-head {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
-/* ===== グラフ ===== */
+.detail-gym {
+  margin: -4px 4px 10px;
+  font-size: 13px;
+  color: var(--muted);
+}
 
-/* iPhone風の切り替えボタン */
+/* ===== グラフ ===== */
 .segmented {
   display: flex;
-  background: #e5e5ea;
-  border-radius: 8px;
   padding: 2px;
+  border-radius: var(--radius-field);
+  background: var(--field);
 }
 
 .segmented button {
   flex: 1;
-  border: none;
-  background: none;
   padding: 8px 0;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: var(--text);
   font: inherit;
   font-size: 13px;
-  color: #222;
-  border-radius: 6px;
   cursor: pointer;
 }
 
 .segmented button.active {
-  background: #fff;
+  background: #636366;
   font-weight: bold;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
 }
 
 .chart-wrap {
@@ -596,132 +863,51 @@ main {
   height: 260px;
 }
 
-/* まとめ */
 .graph-summary {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: 16px;
 }
 
 .summary-label {
   font-size: 12px;
-  color: #666;
+  color: var(--muted);
 }
 
 .summary-value {
-  font-size: 18px;
+  font-size: 22px;
   font-weight: bold;
 }
 
 .summary-sub {
   font-size: 12px;
-  color: #999;
+  color: var(--faint);
 }
 
 .summary-up {
-  color: #34c759;
+  color: var(--accent);
 }
 
 .summary-down {
-  color: #ff3b30;
-}
-
-/* ===== 体重・体脂肪率 ===== */
-.body-card {
-  padding: 12px 16px;
-}
-
-/* 保存済みのときは、緑の枠と薄い緑の背景 */
-.body-card.saved {
-  background: #f0fbf3;
-  box-shadow: inset 0 0 0 2px #34c759;
-}
-
-.body-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-}
-
-.body-title {
-  font-size: 13px;
-  color: #666;
-}
-
-.body-saved-badge {
-  font-size: 12px;
-  font-weight: bold;
-  color: #1a7f37;
-  background: #d7f5df;
-  padding: 2px 8px;
-  border-radius: 10px;
-}
-
-.body-row {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.btn-save {
-  flex-shrink: 0;
-  margin-left: 4px;
-  padding: 8px 12px;
-  background: #007aff;
-  color: #fff;
-}
-
-.body-status {
-  min-height: 16px;
-  margin-top: 6px;
-  font-size: 12px;
-  color: #999;
-}
-
-.link-button {
-  border: none;
-  background: none;
-  padding: 0 0 0 8px;
-  font: inherit;
-  color: #007aff;
-  cursor: pointer;
-}
-
-/* 保存済みの表示 */
-.body-values {
-  display: flex;
-  align-items: baseline;
-  gap: 24px;
-  padding: 2px 0 8px;
-}
-
-.body-value {
-  font-size: 28px;
-  font-weight: bold;
-}
-
-.body-value small {
-  margin-left: 2px;
-  font-size: 14px;
-  font-weight: normal;
-  color: #666;
-}
-
-.body-saved-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.body-diff {
-  font-size: 13px;
-  color: #666;
+  color: var(--danger);
 }
 
 /* ===== 設定 ===== */
-.section-gap {
-  margin-top: 28px;
+.gym-form {
+  display: flex;
+  gap: 8px;
+  padding: 12px;
+}
+
+.gym-form input {
+  flex: 1;
+  min-width: 0;
+  padding: 12px;
+  border: none;
+  border-radius: var(--radius-field);
+  background: var(--field);
+  color: var(--text);
+  font-size: 16px;
 }
 
 .data-summary {
@@ -733,183 +919,28 @@ main {
 .data-note {
   margin: 12px 0 0;
   font-size: 12px;
-  color: #999;
   line-height: 1.6;
+  color: var(--muted);
 }
 
 /* ===== 更新のお知らせ ===== */
 .update-banner {
   position: fixed;
-  left: 12px;
-  right: 12px;
-  bottom: calc(68px + env(safe-area-inset-bottom));
+  left: 16px;
+  right: 16px;
+  bottom: calc(max(12px, env(safe-area-inset-bottom)) + 80px);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 14px;
-  border-radius: 12px;
-  background: #222;
-  color: #fff;
+  padding: 12px 16px;
+  border-radius: 16px;
+  background: var(--field-strong);
+  color: var(--text);
   font-size: 14px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
-/* ===== ドロップセット ===== */
-.set-drop {
-  flex-shrink: 0;
-  width: 28px;
-  height: 28px;
-  border: none;
-  border-radius: 50%;
-  background: #f0f0f0;
-  color: #999;
-  font-size: 14px;
-  cursor: pointer;
-}
-
-.set-drop.active {
-  background: #ff9500;
-  color: #fff;
-}
-
-/* 1セット目のボタンは、場所だけ残して見えなくする */
-.set-drop:disabled {
-  visibility: hidden;
-}
-
-.set-row.drop {
-  padding-left: 12px;
-}
-
-.set-row.drop .set-no,
-.record-sets li.drop .set-no {
-  color: #ff9500;
-}
-
-.record-sets li.drop {
-  padding-left: 16px;
-  color: #666;
-}
-
-/* ===== スーパーセット ===== */
-.ss-group {
-  border-left: 4px solid var(--ss-color);
-  padding-left: 10px;
-  margin-bottom: 16px;
-}
-
-.ss-group .record-card:last-child {
-  margin-bottom: 0;
-}
-
-.ss-label {
-  margin-bottom: 6px;
-  font-size: 13px;
+.update-banner .btn-small {
+  background: var(--accent);
+  color: var(--accent-ink);
   font-weight: bold;
-  color: var(--ss-color);
-}
-
-.ss-actions {
-  display: flex;
-  gap: 6px;
-  margin-top: 10px;
-}
-
-/* つなぐ相手を選ぶ欄 */
-.ss-picker {
-  margin-top: 10px;
-  padding: 10px;
-  border-radius: 8px;
-  background: #f5f5f7;
-}
-
-.ss-picker-title {
-  margin-bottom: 8px;
-  font-size: 13px;
-  color: #666;
-}
-
-.ss-picker-empty {
-  margin: 0 0 8px;
-  font-size: 13px;
-  color: #999;
-}
-
-.ss-option {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  margin-bottom: 6px;
-  padding: 10px 12px;
-  border: none;
-  border-radius: 8px;
-  background: #fff;
-  color: #222;
-  font: inherit;
-  font-size: 15px;
-  text-align: left;
-  cursor: pointer;
-}
-
-.ss-note {
-  margin-left: auto;
-  font-size: 11px;
-  color: #999;
-}
-
-/* 前回の記録の欄 */
-.previous-ss {
-  margin-top: 6px;
-  color: #af52de;
-}
-
-/* ===== ジム ===== */
-.gym-card {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-}
-
-.gym-icon {
-  flex-shrink: 0;
-}
-
-.gym-select {
-  flex: 1;
-  min-width: 0;
-  font-size: 16px;
-  padding: 8px;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  background: #fff;
-  color: #222;
-}
-
-.gym-empty {
-  font-size: 13px;
-  color: #999;
-}
-
-.gym-form {
-  display: flex;
-  gap: 8px;
-  padding: 12px;
-}
-
-.gym-form input {
-  flex: 1;
-  min-width: 0;
-  font-size: 16px;
-  padding: 10px;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-}
-
-/* カレンダーの詳細 */
-.detail-gym {
-  margin: -4px 0 8px;
-  font-size: 13px;
-  color: #666;
 }
