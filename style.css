@@ -1673,3 +1673,22 @@ div.settings-row {
 .part-children:last-child {
   border-bottom: none;
 }
+
+/* ===== 記録カード：押して編集 ===== */
+.record-chevron {
+  margin-left: 6px;
+  font-size: 18px;
+  font-weight: normal;
+  color: var(--faint);
+}
+
+.record-card.tappable {
+  cursor: pointer;
+  transition: transform 0.12s, background 0.12s;
+}
+
+/* 押している間は、少し縮んで暗くなる */
+.record-card.tappable:active {
+  transform: scale(0.98);
+  background: #242426;
+}

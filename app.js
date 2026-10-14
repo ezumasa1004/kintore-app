@@ -1016,7 +1016,8 @@ function supersetPickerHtml(record) {
   return html;
 }
 
-// 記録カード1枚分のHTML。showButtons が true のときだけ編集・削除ボタンを付ける
+// 記録カード1枚分のHTML
+// showButtons が true（記録タブ）のとき：カードを押すと編集できる。削除・スーパーセットのボタンも付ける
 function recordCardHtml(record, showButtons) {
   const ex = getExercise(record.exerciseId);
   const part = getPart(ex.part);
@@ -1043,14 +1044,13 @@ function recordCardHtml(record, showButtons) {
     ? `<p class="record-memo">${escapeHtml(record.memo)}</p>`
     : "";
 
-  const buttonsHtml = showButtons
-    ? `<div class="item-buttons">
-         <button class="btn-small" data-action="edit" data-id="${record.id}">編集</button>
-         <button class="btn-small btn-danger" data-action="delete" data-id="${record.id}">削除</button>
-       </div>`
+  // 押せることを表す「›」と、削除ボタン（記録タブのときだけ）
+  const chevronHtml = showButtons ? `<span class="record-chevron">›</span>` : "";
+  const deleteHtml = showButtons
+    ? `<button class="btn-small btn-danger" data-action="delete" data-id="${record.id}">削除</button>`
     : "";
 
-  // スーパーセットのボタン（記録画面のときだけ）
+  // スーパーセットのボタン（記録タブのときだけ）
   let supersetHtml = "";
   if (showButtons) {
     const inGroup = record.supersetId !== null;
@@ -1067,13 +1067,18 @@ function recordCardHtml(record, showButtons) {
     }
   }
 
+  // 記録タブのカードには、押せる目印（tappable）と、どの記録かを表すIDを付ける
+  const cardAttrs = showButtons
+    ? `class="card record-card tappable" data-record-id="${record.id}"`
+    : `class="card record-card"`;
+
   return `
-    <div class="card record-card">
+    <div ${cardAttrs}>
       <div class="record-head">
         <span class="part-dot" style="background:${part.color}"></span>
-        <span class="record-name">${escapeHtml(ex.name)}</span>
+        <span class="record-name">${escapeHtml(ex.name)}${chevronHtml}</span>
         ${pbHtml}
-        ${buttonsHtml}
+        ${deleteHtml}
       </div>
       <ul class="record-sets">${setsHtml}</ul>
       ${oneRmHtml}
@@ -1137,7 +1142,19 @@ function renderRecordList() {
 
 recordList.addEventListener("click", (event) => {
   const button = event.target.closest("button[data-action]");
-  if (button === null) return;
+
+  // ボタン以外の場所を押したとき
+  if (button === null) {
+    // スーパーセットのボタンの周りや、相手を選ぶ欄の中を押したときは、何もしない
+    if (event.target.closest(".ss-actions, .ss-picker") !== null) return;
+
+    // カードを押したら、その記録を編集する
+    const card = event.target.closest(".record-card[data-record-id]");
+    if (card !== null) {
+      openEditor(getRecord(card.dataset.recordId).exerciseId);
+    }
+    return;
+  }
 
   const action = button.dataset.action;
   const record = getRecord(button.dataset.id);
@@ -3055,6 +3072,8 @@ setTimeout(removeSplash, 1500);
 // iPhoneで2本指を使った拡大・縮小が始まったら、それを取り消す（Safari専用の出来事）
 document.addEventListener("gesturestart", (event) => event.preventDefault());
 document.addEventListener("gesturechange", (event) => event.preventDefault());
+// iPhoneで、押している間のCSS（:active）が効くようにする
+document.addEventListener("touchstart", () => {}, { passive: true });
 
 // ===== 起動時の処理 =====
 recordDate.value = toDateString(new Date());
