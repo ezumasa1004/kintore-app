@@ -282,7 +282,6 @@ function daysBetween(fromText, toText) {
 // データが変わったときに、関係する画面をまとめて描き直す
 function refreshAll() {
   renderExerciseList();
-  renderExerciseSelect();
   renderRecordList();
   renderLastDone();
   renderCalendar();
@@ -460,7 +459,10 @@ const recordDateLabel =
   document.querySelector("#record-date-label");
 const datePrev = document.querySelector("#date-prev");
 const dateNext = document.querySelector("#date-next");
-const exerciseSelect = document.querySelector("#exercise-select");
+const addExerciseButton = document.querySelector("#add-exercise-button");
+const exerciseSheet = document.querySelector("#exercise-sheet");
+const sheetList = document.querySelector("#sheet-list");
+const sheetClose = document.querySelector("#sheet-close");
 const recordEditor = document.querySelector("#record-editor");
 const editorTitle = document.querySelector("#editor-title");
 const setList = document.querySelector("#set-list");
@@ -474,23 +476,71 @@ const previousBox = document.querySelector("#previous-box");
 // 入力中の記録（下書き）。入力欄が閉じているときは null
 let draft = null;
 
-// --- 種目の選択欄 ---
-function renderExerciseSelect() {
-  let html = `<option value="">種目を選んでください</option>`;
+// --- 種目を選ぶ一覧（下から出てくるシート） ---
+function renderExerciseSheet() {
+  let html = "";
 
   for (const part of PARTS) {
     const list = data.exercises.filter((ex) => ex.part === part.id);
     if (list.length === 0) continue;
 
-    html += `<optgroup label="${part.name}">`;
+    html += `
+      <div class="sheet-part">
+        <span class="part-dot" style="background:${part.color}"></span>${part.name}
+      </div>
+      <div class="sheet-group">`;
+
     for (const ex of list) {
-      html += `<option value="${ex.id}">${escapeHtml(ex.name)}</option>`;
+      // 選んでいる日に、すでに記録がある種目か
+      const done = data.records.some(
+        (r) => r.date === recordDate.value && r.exerciseId === ex.id
+      );
+      html += `
+        <button type="button" class="sheet-item" data-id="${ex.id}">
+          <span class="sheet-name">${escapeHtml(ex.name)}</span>
+          ${done ? `<span class="sheet-done">記録済み</span>` : ""}
+          <span class="sheet-chevron">›</span>
+        </button>`;
     }
-    html += `</optgroup>`;
+
+    html += `</div>`;
   }
 
-  exerciseSelect.innerHTML = html;
+  if (html === "") {
+    html = `<p class="empty">種目がありません。設定タブで登録してください。</p>`;
+  }
+
+  sheetList.innerHTML = html;
 }
+
+function openExerciseSheet() {
+  renderExerciseSheet(); // 開くたびに、最新の状態で作り直す
+  exerciseSheet.classList.add("open");
+  document.body.style.overflow = "hidden"; // 後ろの画面がスクロールしないようにする
+}
+
+function closeExerciseSheet() {
+  exerciseSheet.classList.remove("open");
+  document.body.style.overflow = "";
+}
+
+addExerciseButton.addEventListener("click", openExerciseSheet);
+sheetClose.addEventListener("click", closeExerciseSheet);
+
+exerciseSheet.addEventListener("click", (event) => {
+  // 暗い背景の部分をタップしたら閉じる
+  if (event.target === exerciseSheet) {
+    closeExerciseSheet();
+    return;
+  }
+
+  // 種目をタップしたら、閉じてから入力欄を開く
+  const item = event.target.closest("button[data-id]");
+  if (item === null) return;
+
+  closeExerciseSheet();
+  openEditor(item.dataset.id);
+});
 
 // --- 日付の表示（例：2026/10/14(水)） ---
 function renderDateLabel() {
@@ -1076,13 +1126,6 @@ recordList.addEventListener("click", (event) => {
   }
 });
 
-// --- 種目を選んだら入力欄を開く ---
-exerciseSelect.addEventListener("change", () => {
-  if (exerciseSelect.value !== "") {
-    openEditor(exerciseSelect.value);
-  }
-  exerciseSelect.value = ""; // 選択欄は「種目を選んでください」に戻す
-});
 
 datePrev.addEventListener("click", () => changeDate(-1));
 dateNext.addEventListener("click", () => changeDate(1));
@@ -1115,23 +1158,25 @@ function renderLastDone() {
       if (last === null || record.date > last) last = record.date;
     }
 
-    let text = "記録なし";
+    // 大きく表示する部分
+    let valueHtml = `<span class="last-done-none">記録なし</span>`;
     if (last !== null) {
       const days = daysBetween(last, today);
       if (days === 0) {
-        text = "今日";
+        valueHtml = `<span class="last-done-word">今日</span>`;
       } else if (days === 1) {
-        text = "昨日";
+        valueHtml = `<span class="last-done-word">昨日</span>`;
       } else {
-        text = `${days}日前`;
+        valueHtml = `<span class="last-done-word">${days}</span><span class="last-done-unit">日前</span>`;
       }
     }
 
     html += `
-      <div class="last-done-item">
-        <span class="part-dot" style="background:${part.color}"></span>
-        <span class="last-done-part">${part.name}</span>
-        <span class="last-done-days">${text}</span>
+      <div class="card last-done-tile">
+        <div class="last-done-part">
+          <span class="part-dot" style="background:${part.color}"></span>${part.name}
+        </div>
+        <div class="last-done-value">${valueHtml}</div>
       </div>`;
   }
 

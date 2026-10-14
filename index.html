@@ -24,10 +24,6 @@
 
   <main>
     <section id="view-record" class="view active">
-      <div class="card">
-        <div class="last-done-title">部位ごとの最終実施日</div>
-        <div id="last-done-list" class="last-done-list"></div>
-      </div>
       <div class="card date-bar">
         <button type="button" id="date-prev" class="btn-icon">‹</button>
         <label class="date-display">
@@ -74,10 +70,7 @@
         </div>
       </div>
 
-      <label class="field">
-        <span>種目を追加</span>
-        <select id="exercise-select"></select>
-      </label>
+      <button type="button" id="add-exercise-button" class="btn btn-primary btn-block add-exercise">＋ 種目を追加</button>
 
       <div id="record-editor" class="card" hidden>
         <h3 id="editor-title" class="editor-title"></h3>
@@ -98,6 +91,8 @@
 
       <h2 class="section-title">この日の記録</h2>
       <div id="record-list"></div>
+      <h2 class="section-title">部位ごとの最終実施日</h2>
+      <div id="last-done-list" class="last-done-grid"></div>
     </section>
 
     <section id="view-calendar" class="view">
@@ -221,6 +216,18 @@
     </section>
     </section>
   </main>
+
+  <!-- 種目を選ぶ一覧（下から出てくるシート） -->
+  <div id="exercise-sheet" class="sheet-backdrop">
+    <div class="sheet" role="dialog" aria-label="種目を選ぶ">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <span class="sheet-title">種目を選ぶ</span>
+        <button type="button" id="sheet-close" class="sheet-close" aria-label="閉じる">×</button>
+      </div>
+      <div id="sheet-list"></div>
+    </div>
+  </div>
 
   <div id="update-banner" class="update-banner" hidden>
     <span>新しいバージョンがあります</span>
