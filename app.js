@@ -74,7 +74,7 @@ function migrateData(d) {
   if (!Array.isArray(d.bodyWeights)) d.bodyWeights = [];
   if (typeof d.settings !== "object" || d.settings === null) d.settings = {};
   if (d.settings.unit !== "lbs") d.settings.unit = "kg";
-  if (d.settings.defaultGymId === undefined) d.settings.defaultGymId = null;  
+  if (d.settings.defaultGymId === undefined) d.settings.defaultGymId = null;
 
   return d;
 }
@@ -518,6 +518,7 @@ const exerciseSheet = document.querySelector("#exercise-sheet");
 const sheetList = document.querySelector("#sheet-list");
 const sheetClose = document.querySelector("#sheet-close");
 const recordEditor = document.querySelector("#record-editor");
+const editorHome = document.querySelector("#editor-home");
 const editorTitle = document.querySelector("#editor-title");
 const setList = document.querySelector("#set-list");
 const addSetButton = document.querySelector("#add-set");
@@ -529,6 +530,18 @@ const previousBox = document.querySelector("#previous-box");
 
 // 入力中の記録（下書き）。入力欄が閉じているときは null
 let draft = null;
+
+// 入力画面を開いたときの下書きの中身（入力を変えたかどうかを調べるため）
+let draftOriginal = "";
+
+function draftSnapshot() {
+  return JSON.stringify({ sets: draft.sets, memo: draft.memo });
+}
+
+// 開いてから、入力を変えたか
+function isDraftChanged() {
+  return draft !== null && draftSnapshot() !== draftOriginal;
+}
 
 // --- 種目を選ぶ一覧（下から出てくるシート） ---
 function renderExerciseSheet() {
@@ -659,6 +672,11 @@ function recordSetToDraft(set, type) {
 }
 
 function openEditor(exerciseId) {
+  // 入力を変えたまま別の種目に切り替えるときは、確認する
+  if (isDraftChanged() && !confirm("保存していない変更は破棄されます。切り替えますか？")) {
+    return;
+  }
+
   const ex = getExercise(exerciseId);
   const existing = data.records.find(
     (r) => r.date === recordDate.value && r.exerciseId === exerciseId
@@ -680,13 +698,23 @@ function openEditor(exerciseId) {
       sets: [emptySet()],
     };
   }
+  draftOriginal = draftSnapshot(); // 開いたときの中身を覚えておく
 
   editorTitle.textContent = ex.name;
   recordMemo.value = draft.memo;
   recordEditor.hidden = false;
   renderSetList();
   renderPreviousBox();
-  recordEditor.scrollIntoView({ behavior: "smooth" });
+
+  // 編集する記録のカードを、入力画面に置き換える（新しい記録なら元の場所のまま）
+  renderRecordList();
+  recordEditor.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+function closeEditor() {
+  draft = null;
+  recordEditor.hidden = true;
+  renderRecordList(); // 入力画面を元の場所に戻し、カードを表示し直す
 }
 
 function closeEditor() {
@@ -1091,7 +1119,10 @@ function renderRecordList() {
   renderBodyCard(); // 日付が変わったときに、体重の欄も更新する
   renderDateLabel();
   renderGymSelect();
-  renderRecordPhotos(); // 日付が変わったときに、写真の欄も更新する  
+  renderRecordPhotos(); // 日付が変わったときに、写真の欄も更新する
+
+  // まず入力画面を元の場所（「＋ 種目を追加」の下）に戻しておく
+  editorHome.after(recordEditor);
 
   const records = data.records.filter((r) => r.date === recordDate.value);
 
@@ -1100,9 +1131,17 @@ function renderRecordList() {
     return;
   }
 
+  // 編集中の記録は、カードの代わりに「入力画面を置く場所」にする
+  function cardHtml(record) {
+    if (draft !== null && draft.recordId === record.id) {
+      return `<div id="editor-slot"></div>`;
+    }
+    return recordCardHtml(record, true);
+  }
+
   // スーパーセットごとにまとめる（組の並び順は、その組の最初の記録の位置）
-  const groups = [];      // 例：[ [ベンチ, ロウ], [スクワット], [カール, プレスダウン] ]
-  const groupById = {};   // 組の番号 → その組の配列
+  const groups = [];
+  const groupById = {};
   for (const r of records) {
     if (r.supersetId === null) {
       groups.push([r]);
@@ -1119,14 +1158,14 @@ function renderRecordList() {
   let supersetCount = 0;
 
   for (const group of groups) {
-    const cards = group.map((r) => recordCardHtml(r, true)).join("");
+    const cards = group.map(cardHtml).join("");
 
     if (group[0].supersetId === null) {
-      html += cards; // スーパーセットでない記録は、そのまま
+      html += cards;
       continue;
     }
 
-    const letter = String.fromCharCode(65 + supersetCount); // 65 は "A" の文字番号
+    const letter = String.fromCharCode(65 + supersetCount);
     const color = SUPERSET_COLORS[supersetCount % SUPERSET_COLORS.length];
     supersetCount++;
 
@@ -1138,9 +1177,15 @@ function renderRecordList() {
   }
 
   recordList.innerHTML = html;
+
+  // 編集中の記録があれば、その場所に入力画面を移動する
+  const slot = document.querySelector("#editor-slot");
+  if (slot !== null) slot.replaceWith(recordEditor);
 }
 
 recordList.addEventListener("click", (event) => {
+  // 入力画面の中（セットの入力・保存ボタンなど）を押したときは、ここでは何もしない
+  if (event.target.closest("#record-editor") !== null) return;
   const button = event.target.closest("button[data-action]");
 
   // ボタン以外の場所を押したとき
@@ -1772,7 +1817,7 @@ function renderGymSettings() {
   // デフォルトのジムの行（ジムが1つもなければ隠す）
   defaultGymRow.hidden = data.gyms.length === 0;
   const defaultGym = data.settings.defaultGymId === null ? undefined : getGym(data.settings.defaultGymId);
-  defaultGymName.textContent = defaultGym === undefined ? "なし" : defaultGym.name;  
+  defaultGymName.textContent = defaultGym === undefined ? "なし" : defaultGym.name;
   let html = "";
 
   for (const gym of data.gyms) {
@@ -3388,7 +3433,7 @@ setTimeout(removeSplash, 1500);
 document.addEventListener("gesturestart", (event) => event.preventDefault());
 document.addEventListener("gesturechange", (event) => event.preventDefault());
 // iPhoneで、押している間のCSS（:active）が効くようにする
-document.addEventListener("touchstart", () => {}, { passive: true });
+document.addEventListener("touchstart", () => { }, { passive: true });
 
 // ===== 起動時の処理 =====
 recordDate.value = toDateString(new Date());
