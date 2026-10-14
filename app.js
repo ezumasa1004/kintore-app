@@ -2222,6 +2222,21 @@ updateButton.addEventListener("click", () => {
   waitingWorker.postMessage("skipWaiting");
 });
 
+// ===== 起動画面 =====
+const splash = document.querySelector("#splash");
+
+function removeSplash() {
+  if (splash.isConnected) splash.remove();
+}
+
+// 背景が消えるアニメーションが終わったら、起動画面を取り除く
+splash.addEventListener("animationend", (event) => {
+  if (event.target === splash) removeSplash();
+});
+
+// 念のため、アニメーションの終わりが伝わらなかったときも1.5秒後には取り除く
+setTimeout(removeSplash, 1500);
+
 // ===== 起動時の処理 =====
 recordDate.value = toDateString(new Date());
 renderPartOptions();

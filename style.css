@@ -1259,3 +1259,54 @@ div.settings-row {
   line-height: 1.6;
   color: var(--muted);
 }
+
+/* ===== 起動画面 ===== */
+.splash {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  /* 0.55秒待ってから、0.25秒かけて背景を消す */
+  animation: splash-fade 0.25s ease 0.55s forwards;
+}
+
+.splash-icon {
+  width: 96px;
+  height: 96px;
+  border-radius: 22px;
+  /* 0.8秒かけて、小さくなってから大きく広がる */
+  animation: splash-zoom 0.8s ease-in-out forwards;
+}
+
+@keyframes splash-zoom {
+  0% {
+    transform: scale(1);
+  }
+  35% {
+    transform: scale(0.82); /* 少し小さくなる */
+  }
+  100% {
+    transform: scale(14);   /* 大きく広がりながら */
+    opacity: 0;             /* 消えていく */
+  }
+}
+
+@keyframes splash-fade {
+  to {
+    opacity: 0;
+  }
+}
+
+/* 「視差効果を減らす」がオンのときは、動かさずにすっと消すだけ */
+@media (prefers-reduced-motion: reduce) {
+  .splash-icon {
+    animation: none;
+  }
+
+  .splash {
+    animation: splash-fade 0.3s ease 0.3s forwards;
+  }
+}
