@@ -753,3 +753,40 @@ main {
   font-size: 14px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
+
+/* ===== ドロップセット ===== */
+.set-drop {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 50%;
+  background: #f0f0f0;
+  color: #999;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.set-drop.active {
+  background: #ff9500;
+  color: #fff;
+}
+
+/* 1セット目のボタンは、場所だけ残して見えなくする */
+.set-drop:disabled {
+  visibility: hidden;
+}
+
+.set-row.drop {
+  padding-left: 12px;
+}
+
+.set-row.drop .set-no,
+.record-sets li.drop .set-no {
+  color: #ff9500;
+}
+
+.record-sets li.drop {
+  padding-left: 16px;
+  color: #666;
+}

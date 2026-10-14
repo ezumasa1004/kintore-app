@@ -1,12 +1,12 @@
 // ===== 定数（アプリ内で変わらない値） =====
 const PARTS = [
-  { id: "chest",    name: "胸",     color: "#ff3b30" },
-  { id: "back",     name: "背中",   color: "#007aff" },
-  { id: "shoulder", name: "肩",     color: "#ff9500" },
-  { id: "arm",      name: "腕",     color: "#af52de" },
-  { id: "leg",      name: "脚",     color: "#34c759" },
-  { id: "abs",      name: "腹",     color: "#ffcc00" },
-  { id: "other",    name: "その他", color: "#8e8e93" },
+  { id: "chest", name: "胸", color: "#ff3b30" },
+  { id: "back", name: "背中", color: "#007aff" },
+  { id: "shoulder", name: "肩", color: "#ff9500" },
+  { id: "arm", name: "腕", color: "#af52de" },
+  { id: "leg", name: "脚", color: "#34c759" },
+  { id: "abs", name: "腹", color: "#ffcc00" },
+  { id: "other", name: "その他", color: "#8e8e93" },
 ];
 
 const TYPE_NAMES = {
@@ -19,16 +19,16 @@ const LB_PER_KG = 2.20462; // 1kg = 2.20462lbs
 
 // ===== データの保存・読み込み =====
 const STORAGE_KEY = "kintore-app-data";
-const DATA_VERSION = 1; // データの形の版番号。形を変えたら増やす
+const DATA_VERSION = 2; // データの形の版番号。形を変えたら増やす
 
 function createDefaultData() {
   return {
     version: DATA_VERSION,
     exercises: [
       { id: createId(), name: "ベンチプレス", part: "chest", type: "weight" },
-      { id: createId(), name: "懸垂",         part: "back",  type: "bodyweight" },
-      { id: createId(), name: "スクワット",   part: "leg",   type: "weight" },
-      { id: createId(), name: "プランク",     part: "abs",   type: "time" },
+      { id: createId(), name: "懸垂", part: "back", type: "bodyweight" },
+      { id: createId(), name: "スクワット", part: "leg", type: "weight" },
+      { id: createId(), name: "プランク", part: "abs", type: "time" },
     ],
     records: [],
     bodyWeights: [],
@@ -41,11 +41,17 @@ function migrateData(d) {
   // 版番号がない ＝ 版番号を入れる前（ステップ7まで）のデータ
   if (d.version === undefined) d.version = 1;
 
-  // ↓ 将来データの形を変えたら、ここに変換を追加していく（例）
-  // if (d.version === 1) {
-  //   for (const r of d.records) r.condition = null;
-  //   d.version = 2;
-  // }
+  // ↓ データの形を変えたら、ここに変換を追加していく
+
+  // 版1 → 版2：セットにドロップかどうか（drop）を追加
+  if (d.version === 1) {
+    for (const r of d.records) {
+      for (const s of r.sets) {
+        if (s.drop === undefined) s.drop = false;
+      }
+    }
+    d.version = 2;
+  }
 
   // 足りない項目を補う
   if (!Array.isArray(d.bodyWeights)) d.bodyWeights = [];
@@ -181,10 +187,27 @@ function compareSets(a, b, type) {
   return a.reps - b.reps;
 }
 
-// セットの中から一番良いものを選ぶ
+// ドロップを除いたセット（自己ベストなど「強さ」の記録に使う）
+function normalSets(sets) {
+  const list = sets.filter((s) => !s.drop);
+  return list.length > 0 ? list : sets;
+}
+
+// セットの番号（ドロップは「↳」、それ以外は 1, 2, 3 …）
+function setLabels(sets) {
+  let count = 0;
+  return sets.map((s) => {
+    if (s.drop) return "↳";
+    count++;
+    return String(count);
+  });
+}
+
+// セットの中から一番良いものを選ぶ（ドロップは除く）
 function bestSet(sets, type) {
-  let best = sets[0];
-  for (const set of sets) {
+  const list = normalSets(sets);
+  let best = list[0];
+  for (const set of list) {
     if (compareSets(set, best, type) > 0) best = set;
   }
   return best;
@@ -408,8 +431,8 @@ exerciseList.addEventListener("click", (event) => {
 
 // ===== トレーニング記録 =====
 const recordDate = document.querySelector("#record-date");
-const recordDateLabel = 
-document.querySelector("#record-date-label");
+const recordDateLabel =
+  document.querySelector("#record-date-label");
 const datePrev = document.querySelector("#date-prev");
 const dateNext = document.querySelector("#date-next");
 const exerciseSelect = document.querySelector("#exercise-select");
@@ -475,7 +498,7 @@ function changeDate(days) {
 
 // --- 下書きの作成 ---
 function emptySet() {
-  return { weight: "", reps: "", seconds: "", sign: "+" };
+  return { weight: "", reps: "", seconds: "", sign: "+", drop: false };
 }
 
 // 保存済みの1セット → 入力欄に入れる形（文字列）
@@ -492,6 +515,7 @@ function recordSetToDraft(set, type) {
     weight: weight,
     sign: set.weight < 0 ? "-" : "+",
     reps: String(set.reps),
+    drop: set.drop === true,
   };
 }
 
@@ -522,7 +546,7 @@ function openEditor(exerciseId) {
   recordMemo.value = draft.memo;
   recordEditor.hidden = false;
   renderSetList();
-  renderPreviousBox();  
+  renderPreviousBox();
   recordEditor.scrollIntoView({ behavior: "smooth" });
 }
 
@@ -545,7 +569,9 @@ function renderPreviousBox() {
   let html = `<div class="previous-box">`;
 
   if (previous !== null) {
-    const setsText = previous.sets.map((set) => formatSet(set, ex.type)).join(" / ");
+    const setsText = previous.sets
+      .map((set) => (set.drop ? "↳" : "") + formatSet(set, ex.type))
+      .join(" / ");
     html += `
       <div class="previous-head">
         <span>前回（${formatShortDate(previous.date)}）</span>
@@ -582,7 +608,7 @@ previousBox.addEventListener("click", (event) => {
 });
 
 // --- セットの入力欄 ---
-function setRowHtml(set, i, type) {
+function setRowHtml(set, i, type, label) {
   let inputs = "";
 
   if (type === "time") {
@@ -609,18 +635,32 @@ function setRowHtml(set, i, type) {
       <span class="set-unit">回</span>`;
   }
 
+  // ドロップの切り替えボタン（時間の種目にはない。1セット目は押せない）
+  let dropButton = "";
+  if (type !== "time") {
+    dropButton = `
+      <button type="button" class="set-drop ${set.drop ? "active" : ""}"
+        data-action="toggle-drop" data-index="${i}" ${i === 0 ? "disabled" : ""}>↓</button>`;
+  }
+
   return `
-    <div class="set-row">
-      <span class="set-no">${i + 1}</span>
+    <div class="set-row ${set.drop ? "drop" : ""}">
+      <span class="set-no">${label}</span>
       ${inputs}
+      ${dropButton}
       <button type="button" class="set-remove" data-action="remove-set" data-index="${i}">×</button>
     </div>`;
 }
 
 function renderSetList() {
   const type = getExercise(draft.exerciseId).type;
+
+  // 1セット目はドロップにできない（セットを消して、ドロップが先頭になったとき用）
+  if (draft.sets.length > 0) draft.sets[0].drop = false;
+
+  const labels = setLabels(draft.sets);
   setList.innerHTML = draft.sets
-    .map((set, i) => setRowHtml(set, i, type))
+    .map((set, i) => setRowHtml(set, i, type, labels[i]))
     .join("");
 }
 
@@ -634,13 +674,22 @@ setList.addEventListener("input", (event) => {
   draft.sets[index][field] = el.value;
 });
 
-// セットの「×」ボタン
+// セットの行のボタン（「↓」ドロップの切り替え、「×」削除）
 setList.addEventListener("click", (event) => {
-  const button = event.target.closest('button[data-action="remove-set"]');
+  const button = event.target.closest("button[data-action]");
   if (button === null) return;
 
-  draft.sets.splice(Number(button.dataset.index), 1);
-  if (draft.sets.length === 0) draft.sets.push(emptySet());
+  const index = Number(button.dataset.index);
+
+  if (button.dataset.action === "remove-set") {
+    draft.sets.splice(index, 1);
+    if (draft.sets.length === 0) draft.sets.push(emptySet());
+  }
+
+  if (button.dataset.action === "toggle-drop") {
+    draft.sets[index].drop = !draft.sets[index].drop;
+  }
+
   renderSetList();
 });
 
@@ -663,7 +712,7 @@ function draftToSets(type) {
   for (const s of draft.sets) {
     if (type === "time") {
       const seconds = parseInt(s.seconds, 10);
-      if (seconds > 0) sets.push({ seconds: seconds });
+      if (seconds > 0) sets.push({ seconds: seconds, drop: false });
       continue;
     }
 
@@ -678,12 +727,14 @@ function draftToSets(type) {
     if (type === "bodyweight" && s.sign === "-") weight = -weight;
 
     const kg = Math.round(displayToKg(weight) * 1000) / 1000;
-    sets.push({ weight: kg, reps: reps });
+    sets.push({ weight: kg, reps: reps, drop: s.drop });
   }
+
+  // 空のセットを除いた結果、先頭がドロップになったら通常のセットに戻す
+  if (sets.length > 0) sets[0].drop = false;
 
   return sets;
 }
-
 editorSave.addEventListener("click", () => {
   const type = getExercise(draft.exerciseId).type;
   const sets = draftToSets(type);
@@ -719,8 +770,12 @@ function recordCardHtml(record, showButtons) {
   const ex = getExercise(record.exerciseId);
   const part = getPart(ex.part);
 
+  const labels = setLabels(record.sets);
   const setsHtml = record.sets
-    .map((set, i) => `<li><span class="set-no">${i + 1}</span>${formatSet(set, ex.type)}</li>`)
+    .map((set, i) => `
+      <li class="${set.drop ? "drop" : ""}">
+        <span class="set-no">${labels[i]}</span>${formatSet(set, ex.type)}
+      </li>`)
     .join("");
 
   const pbHtml = isPersonalBest(record, ex.type)
@@ -1194,15 +1249,17 @@ bodyDeleteButton.addEventListener("click", () => {
 // ===== グラフ =====
 
 // 種類ごとの指標。calc は「その日のセット」から値を1つ計算する関数
+// 種類ごとの指標。calc は「その日のセット」から値を1つ計算する関数
+// 最大値の指標はドロップを除き（normalSets）、合計の指標はドロップも含める
 const METRICS = {
   weight: [
     {
       id: "1rm", name: "推定1RM", unit: "weight",
-      calc: (sets) => Math.max(...sets.map((s) => estimate1RM(s.weight, s.reps))),
+      calc: (sets) => Math.max(...normalSets(sets).map((s) => estimate1RM(s.weight, s.reps))),
     },
     {
       id: "max", name: "最大重量", unit: "weight",
-      calc: (sets) => Math.max(...sets.map((s) => s.weight)),
+      calc: (sets) => Math.max(...normalSets(sets).map((s) => s.weight)),
     },
     {
       id: "volume", name: "総挙上量", unit: "weight",
@@ -1212,7 +1269,7 @@ const METRICS = {
   bodyweight: [
     {
       id: "maxReps", name: "最大回数", unit: "回",
-      calc: (sets) => Math.max(...sets.map((s) => s.reps)),
+      calc: (sets) => Math.max(...normalSets(sets).map((s) => s.reps)),
     },
     {
       id: "totalReps", name: "総回数", unit: "回",
@@ -1220,13 +1277,13 @@ const METRICS = {
     },
     {
       id: "maxLoad", name: "最大加重", unit: "weight",
-      calc: (sets) => Math.max(...sets.map((s) => s.weight)),
+      calc: (sets) => Math.max(...normalSets(sets).map((s) => s.weight)),
     },
   ],
   time: [
     {
       id: "maxTime", name: "最長時間", unit: "秒",
-      calc: (sets) => Math.max(...sets.map((s) => s.seconds)),
+      calc: (sets) => Math.max(...normalSets(sets).map((s) => s.seconds)),
     },
     {
       id: "totalTime", name: "合計時間", unit: "秒",
@@ -1239,8 +1296,8 @@ const METRICS = {
 const PERIOD_MONTHS = { "1m": 1, "3m": 3, "1y": 12, "all": null };
 // 体重・体脂肪率の指標。value は体重の記録1つから値を取り出す関数
 const BODY_METRICS = [
-  { id: "weight", name: "体重",     unit: "weight", value: (b) => b.weight },
-  { id: "fat",    name: "体脂肪率", unit: "%",      value: (b) => b.fat },
+  { id: "weight", name: "体重", unit: "weight", value: (b) => b.weight },
+  { id: "fat", name: "体脂肪率", unit: "%", value: (b) => b.fat },
 ];
 
 const graphExercise = document.querySelector("#graph-exercise");
