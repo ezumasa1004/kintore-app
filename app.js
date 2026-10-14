@@ -19,7 +19,7 @@ const LB_PER_KG = 2.20462; // 1kg = 2.20462lbs
 
 // ===== データの保存・読み込み =====
 const STORAGE_KEY = "kintore-app-data";
-const DATA_VERSION = 3; // データの形の版番号。形を変えたら増やす
+const DATA_VERSION = 4; // データの形の版番号。形を変えたら増やす
 
 function createDefaultData() {
   return {
@@ -32,6 +32,8 @@ function createDefaultData() {
     ],
     records: [],
     bodyWeights: [],
+    gyms: [],      // ← 追加
+    dayGyms: [],   // ← 追加
     settings: { unit: "kg", lastExport: null },
   };
 }
@@ -59,6 +61,13 @@ function migrateData(d) {
       if (r.supersetId === undefined) r.supersetId = null;
     }
     d.version = 3;
+  }
+
+  // 版3 → 版4：ジムの一覧（gyms）と、日付ごとのジム（dayGyms）を追加
+  if (d.version === 3) {
+    if (!Array.isArray(d.gyms)) d.gyms = [];
+    if (!Array.isArray(d.dayGyms)) d.dayGyms = [];
+    d.version = 4;
   }
 
   // 足りない項目を補う
@@ -277,6 +286,7 @@ function refreshAll() {
   renderRecordList();
   renderCalendar();
   renderSettings();
+  renderGymSettings();
 }
 
 // ===== タブ切り替え =====
@@ -782,6 +792,7 @@ editorSave.addEventListener("click", () => {
     record.memo = draft.memo.trim();
   }
 
+  autoFillGym(recordDate.value); // ← 追加（その日のジムが決まっていなければ、前回のジムを入れる） 
   saveData();
   closeEditor();
   refreshAll();
@@ -959,6 +970,7 @@ function recordCardHtml(record, showButtons) {
 function renderRecordList() {
   renderBodyCard(); // 日付が変わったときに、体重の欄も更新する
   renderDateLabel();
+  renderGymSelect();
 
   const records = data.records.filter((r) => r.date === recordDate.value);
 
@@ -1234,6 +1246,11 @@ function renderCalendarDetail() {
       <h2 class="section-title">${formatLongDate(selectedDate)}</h2>
       <button type="button" class="btn-small" data-action="open-record">記録画面で開く</button>
     </div>`;
+  // その日のジム
+  const dayGym = findDayGym(selectedDate);
+  if (dayGym !== null && dayGym.gymId !== null) {
+    html += `<p class="detail-gym">📍 ${escapeHtml(getGym(dayGym.gymId).name)}</p>`;
+  }
 
   if (records.length === 0) {
     html += `<p class="empty">記録がありません</p>`;
@@ -1458,6 +1475,148 @@ bodyDeleteButton.addEventListener("click", () => {
 
   data.bodyWeights = data.bodyWeights.filter((b) => b.date !== recordDate.value);
   bodyEditDate = null;
+  saveData();
+  refreshAll();
+});
+
+// ===== ジム =====
+const gymSelect = document.querySelector("#gym-select");
+const gymEmpty = document.querySelector("#gym-empty");
+const gymForm = document.querySelector("#gym-form");
+const gymName = document.querySelector("#gym-name");
+const gymList = document.querySelector("#gym-list");
+
+function getGym(id) {
+  return data.gyms.find((g) => g.id === id);
+}
+
+// その日のジムの登録（なければ null）
+// gymId が null の登録は「自分で未設定を選んだ」という意味
+function findDayGym(date) {
+  const entry = data.dayGyms.find((d) => d.date === date);
+  return entry === undefined ? null : entry;
+}
+
+// その日のジムを決める
+function setDayGym(date, gymId) {
+  const entry = findDayGym(date);
+  if (entry !== null) {
+    entry.gymId = gymId;
+  } else {
+    data.dayGyms.push({ date: date, gymId: gymId });
+  }
+}
+
+// 指定した日より前で、最後に行ったジムのID（なければ null）
+function findPreviousGymId(date) {
+  let previous = null;
+  for (const d of data.dayGyms) {
+    if (d.date >= date || d.gymId === null) continue;
+    if (previous === null || d.date > previous.date) previous = d;
+  }
+  return previous === null ? null : previous.gymId;
+}
+
+// その日のジムがまだ決まっていなければ、前回のジムを入れる
+function autoFillGym(date) {
+  if (findDayGym(date) !== null) return; // 自分で選んだ日（未設定を含む）は何もしない
+  const gymId = findPreviousGymId(date);
+  if (gymId !== null) setDayGym(date, gymId);
+}
+
+// --- 記録タブのジムの選択欄 ---
+function renderGymSelect() {
+  if (data.gyms.length === 0) {
+    gymSelect.hidden = true;
+    gymEmpty.hidden = false;
+    return;
+  }
+  gymSelect.hidden = false;
+  gymEmpty.hidden = true;
+
+  let html = `<option value="">ジム未設定</option>`;
+  for (const gym of data.gyms) {
+    html += `<option value="${gym.id}">${escapeHtml(gym.name)}</option>`;
+  }
+  gymSelect.innerHTML = html;
+
+  const entry = findDayGym(recordDate.value);
+  gymSelect.value = entry === null || entry.gymId === null ? "" : entry.gymId;
+}
+
+gymSelect.addEventListener("change", () => {
+  const gymId = gymSelect.value === "" ? null : gymSelect.value;
+  setDayGym(recordDate.value, gymId);
+  saveData();
+  refreshAll();
+});
+
+// --- 設定タブのジムの管理 ---
+function renderGymSettings() {
+  if (data.gyms.length === 0) {
+    gymList.innerHTML = `<p class="empty">ジムはまだ登録されていません</p>`;
+    return;
+  }
+
+  let html = `<ul class="exercise-list">`;
+  for (const gym of data.gyms) {
+    const days = data.dayGyms.filter((d) => d.gymId === gym.id).length;
+    html += `
+      <li class="exercise-item">
+        <div>
+          <div>${escapeHtml(gym.name)}</div>
+          <div class="exercise-type">${days}日</div>
+        </div>
+        <div class="item-buttons">
+          <button class="btn-small" data-action="rename" data-id="${gym.id}">名前変更</button>
+          <button class="btn-small btn-danger" data-action="delete" data-id="${gym.id}">削除</button>
+        </div>
+      </li>`;
+  }
+  html += `</ul>`;
+
+  gymList.innerHTML = html;
+}
+
+// ジムを追加
+gymForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+
+  const name = gymName.value.trim();
+  if (name === "") return;
+
+  data.gyms.push({ id: createId(), name: name });
+  gymForm.reset();
+  saveData();
+  refreshAll();
+});
+
+// 名前変更・削除
+gymList.addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-action]");
+  if (button === null) return;
+
+  const gym = getGym(button.dataset.id);
+
+  if (button.dataset.action === "rename") {
+    const name = prompt("新しい名前を入力してください", gym.name);
+    if (name === null || name.trim() === "") return; // キャンセル、または空のとき
+    gym.name = name.trim();
+  }
+
+  if (button.dataset.action === "delete") {
+    const usedDays = data.dayGyms.filter((d) => d.gymId === gym.id);
+
+    let message = `「${gym.name}」を削除しますか？`;
+    if (usedDays.length > 0) {
+      message += `\n${usedDays.length}日分の記録で使われています。その日のジムは未設定になります。`;
+    }
+    if (!confirm(message)) return;
+
+    for (const d of usedDays) d.gymId = null;
+    data.gyms = data.gyms.filter((g) => g.id !== gym.id);
+  }
+
   saveData();
   refreshAll();
 });

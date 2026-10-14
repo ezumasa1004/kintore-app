@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -15,13 +16,14 @@
   <script src="lib/chart.umd.js" defer></script>
   <script src="app.js" defer></script>
 </head>
+
 <body>
   <header class="app-header">
     <h1 id="page-title">記録</h1>
   </header>
 
   <main>
-     <section id="view-record" class="view active">
+    <section id="view-record" class="view active">
       <div class="card">
         <div class="last-done-title">部位ごとの最終実施日</div>
         <div id="last-done-list" class="last-done-list"></div>
@@ -33,6 +35,12 @@
           <input type="date" id="record-date">
         </label>
         <button type="button" id="date-next" class="btn-icon">›</button>
+      </div>
+
+      <div class="card gym-card">
+        <span class="gym-icon">📍</span>
+        <select id="gym-select" class="gym-select"></select>
+        <span id="gym-empty" class="gym-empty" hidden>ジムは設定タブで登録できます</span>
       </div>
 
       <div id="body-card" class="card body-card">
@@ -183,6 +191,12 @@
       </form>
 
       <div id="exercise-list"></div>
+      <h2 class="section-title section-gap">ジムの管理</h2>
+      <form id="gym-form" class="card gym-form">
+        <input id="gym-name" type="text" placeholder="例：〇〇フィットネス 三宮店" required>
+        <button type="submit" class="btn-small btn-save">追加</button>
+      </form>
+      <div id="gym-list"></div>
       <h2 class="section-title section-gap">単位</h2>
       <div class="card">
         <div id="unit-switch" class="segmented">
@@ -204,14 +218,15 @@
           読み込むと、今のデータはすべて置き換わります。
         </p>
       </div>
-    </section>    </section>
+    </section>
+    </section>
   </main>
 
   <div id="update-banner" class="update-banner" hidden>
     <span>新しいバージョンがあります</span>
     <button type="button" id="update-button" class="btn-small">更新する</button>
-  </div> 
-  
+  </div>
+
   <nav class="tab-bar">
     <button class="tab active" data-view="record">
       <span class="tab-icon">🏋️</span>
@@ -231,4 +246,5 @@
     </button>
   </nav>
 </body>
+
 </html>

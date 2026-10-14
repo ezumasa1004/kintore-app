@@ -863,3 +863,53 @@ main {
   margin-top: 6px;
   color: #af52de;
 }
+
+/* ===== ジム ===== */
+.gym-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+}
+
+.gym-icon {
+  flex-shrink: 0;
+}
+
+.gym-select {
+  flex: 1;
+  min-width: 0;
+  font-size: 16px;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  background: #fff;
+  color: #222;
+}
+
+.gym-empty {
+  font-size: 13px;
+  color: #999;
+}
+
+.gym-form {
+  display: flex;
+  gap: 8px;
+  padding: 12px;
+}
+
+.gym-form input {
+  flex: 1;
+  min-width: 0;
+  font-size: 16px;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+}
+
+/* カレンダーの詳細 */
+.detail-gym {
+  margin: -4px 0 8px;
+  font-size: 13px;
+  color: #666;
+}
