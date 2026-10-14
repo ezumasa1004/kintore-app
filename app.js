@@ -319,12 +319,14 @@ tabs.forEach((tab) => {
 });
 
 // ===== 種目の管理 =====
+const exerciseAddRow = document.querySelector("#exercise-add-row");
 const exerciseForm = document.querySelector("#exercise-form");
 const exerciseName = document.querySelector("#exercise-name");
 const exercisePart = document.querySelector("#exercise-part");
 const exerciseType = document.querySelector("#exercise-type");
 const exerciseSubmit = document.querySelector("#exercise-submit");
 const exerciseCancel = document.querySelector("#exercise-cancel");
+const exerciseDelete = document.querySelector("#exercise-delete");
 const exerciseList = document.querySelector("#exercise-list");
 
 let editingId = null; // 編集中の種目のID（編集していないときは null）
@@ -335,52 +337,50 @@ function renderPartOptions() {
     .join("");
 }
 
+// 種目の一覧（部位の順に、1種目1行で並べる）
 function renderExerciseList() {
   let html = "";
 
   for (const part of PARTS) {
     const list = data.exercises.filter((ex) => ex.part === part.id);
-    if (list.length === 0) continue;
-
-    html += `
-      <h3 class="part-title">
-        <span class="part-dot" style="background:${part.color}"></span>
-        ${part.name}
-      </h3>
-      <ul class="exercise-list">`;
-
     for (const ex of list) {
       html += `
-        <li class="exercise-item">
-          <div>
-            <div>${escapeHtml(ex.name)}</div>
-            <div class="exercise-type">${TYPE_NAMES[ex.type]}</div>
-          </div>
-          <div class="item-buttons">
-            <button class="btn-small" data-action="edit" data-id="${ex.id}">編集</button>
-            <button class="btn-small btn-danger" data-action="delete" data-id="${ex.id}">削除</button>
-          </div>
-        </li>`;
+        <button type="button" class="settings-row" data-id="${ex.id}">
+          <span class="part-dot" style="background:${part.color}"></span>
+          <span class="settings-name">${escapeHtml(ex.name)}</span>
+          <span class="settings-meta">${TYPE_NAMES[ex.type]}</span>
+          <span class="settings-chevron">›</span>
+        </button>`;
     }
-
-    html += `</ul>`;
   }
 
   if (html === "") {
-    html = `<p class="empty">種目がまだありません</p>`;
+    html = `<p class="settings-empty">種目がまだありません</p>`;
   }
 
   exerciseList.innerHTML = html;
 }
 
+// フォームを閉じて、最初の状態に戻す
 function resetExerciseForm() {
   exerciseForm.reset();
   editingId = null;
-  exerciseSubmit.textContent = "追加";
-  exerciseCancel.hidden = true;
   exerciseType.disabled = false;
+  exerciseForm.hidden = true;
+  exerciseAddRow.hidden = false;
 }
 
+// 「＋ 種目を登録」：新しく登録するフォームを開く
+function openExerciseFormForAdd() {
+  resetExerciseForm();
+  exerciseSubmit.textContent = "登録";
+  exerciseDelete.hidden = true;
+  exerciseForm.hidden = false;
+  exerciseAddRow.hidden = true;
+  exerciseName.focus();
+}
+
+// 種目の行を押したとき：編集するフォームを開く
 function startEdit(id) {
   const ex = getExercise(id);
   exerciseName.value = ex.name;
@@ -393,8 +393,10 @@ function startEdit(id) {
 
   editingId = id;
   exerciseSubmit.textContent = "更新";
-  exerciseCancel.hidden = false;
-  exerciseForm.scrollIntoView({ behavior: "smooth" });
+  exerciseDelete.hidden = false;
+  exerciseForm.hidden = false;
+  exerciseAddRow.hidden = true;
+  exerciseForm.scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
 function deleteExercise(id) {
@@ -417,6 +419,7 @@ function deleteExercise(id) {
   refreshAll();
 }
 
+// 登録・更新
 exerciseForm.addEventListener("submit", (event) => {
   event.preventDefault();
 
@@ -442,15 +445,15 @@ exerciseForm.addEventListener("submit", (event) => {
   refreshAll();
 });
 
+exerciseAddRow.addEventListener("click", openExerciseFormForAdd);
 exerciseCancel.addEventListener("click", resetExerciseForm);
+exerciseDelete.addEventListener("click", () => deleteExercise(editingId));
 
+// 種目の行を押したとき
 exerciseList.addEventListener("click", (event) => {
-  const button = event.target.closest("button[data-action]");
-  if (button === null) return;
-
-  const id = button.dataset.id;
-  if (button.dataset.action === "edit") startEdit(id);
-  if (button.dataset.action === "delete") deleteExercise(id);
+  const row = event.target.closest("button[data-id]");
+  if (row === null) return;
+  startEdit(row.dataset.id);
 });
 
 // ===== トレーニング記録 =====
@@ -1600,71 +1603,100 @@ gymSelect.addEventListener("change", () => {
 });
 
 // --- 設定タブのジムの管理 ---
-function renderGymSettings() {
-  if (data.gyms.length === 0) {
-    gymList.innerHTML = `<p class="empty">ジムはまだ登録されていません</p>`;
-    return;
-  }
+const gymAddRow = document.querySelector("#gym-add-row");
+const gymSubmit = document.querySelector("#gym-submit");
+const gymCancel = document.querySelector("#gym-cancel");
+const gymDelete = document.querySelector("#gym-delete");
 
-  let html = `<ul class="exercise-list">`;
+let gymEditingId = null; // 編集中のジムのID（編集していないときは null）
+
+function renderGymSettings() {
+  let html = "";
+
   for (const gym of data.gyms) {
     const days = data.dayGyms.filter((d) => d.gymId === gym.id).length;
     html += `
-      <li class="exercise-item">
-        <div>
-          <div>${escapeHtml(gym.name)}</div>
-          <div class="exercise-type">${days}日</div>
-        </div>
-        <div class="item-buttons">
-          <button class="btn-small" data-action="rename" data-id="${gym.id}">名前変更</button>
-          <button class="btn-small btn-danger" data-action="delete" data-id="${gym.id}">削除</button>
-        </div>
-      </li>`;
+      <button type="button" class="settings-row" data-id="${gym.id}">
+        <span class="settings-name">${escapeHtml(gym.name)}</span>
+        <span class="settings-meta">${days}日</span>
+        <span class="settings-chevron">›</span>
+      </button>`;
   }
-  html += `</ul>`;
+
+  if (html === "") {
+    html = `<p class="settings-empty">ジムはまだ登録されていません</p>`;
+  }
 
   gymList.innerHTML = html;
 }
 
-// ジムを追加
+// フォームを閉じて、最初の状態に戻す
+function resetGymForm() {
+  gymForm.reset();
+  gymEditingId = null;
+  gymForm.hidden = true;
+  gymAddRow.hidden = false;
+}
+
+// フォームを開く（id が null なら新しく登録、それ以外はそのジムを編集）
+function openGymForm(id) {
+  resetGymForm();
+
+  if (id !== null) {
+    gymEditingId = id;
+    gymName.value = getGym(id).name;
+  }
+
+  gymSubmit.textContent = id === null ? "登録" : "更新";
+  gymDelete.hidden = id === null;
+  gymForm.hidden = false;
+  gymAddRow.hidden = true;
+  gymName.focus();
+}
+
+gymAddRow.addEventListener("click", () => openGymForm(null));
+gymCancel.addEventListener("click", resetGymForm);
+
+// ジムの行を押したとき
+gymList.addEventListener("click", (event) => {
+  const row = event.target.closest("button[data-id]");
+  if (row === null) return;
+  openGymForm(row.dataset.id);
+});
+
+// 登録・更新
 gymForm.addEventListener("submit", (event) => {
   event.preventDefault();
 
   const name = gymName.value.trim();
   if (name === "") return;
 
-  data.gyms.push({ id: createId(), name: name });
-  gymForm.reset();
+  if (gymEditingId === null) {
+    data.gyms.push({ id: createId(), name: name });
+  } else {
+    getGym(gymEditingId).name = name;
+  }
+
+  resetGymForm();
   saveData();
   refreshAll();
 });
 
-// 名前変更・削除
-gymList.addEventListener("click", (event) => {
-  const button = event.target.closest("button[data-action]");
-  if (button === null) return;
+// 削除
+gymDelete.addEventListener("click", () => {
+  const gym = getGym(gymEditingId);
+  const usedDays = data.dayGyms.filter((d) => d.gymId === gym.id);
 
-  const gym = getGym(button.dataset.id);
-
-  if (button.dataset.action === "rename") {
-    const name = prompt("新しい名前を入力してください", gym.name);
-    if (name === null || name.trim() === "") return; // キャンセル、または空のとき
-    gym.name = name.trim();
+  let message = `「${gym.name}」を削除しますか？`;
+  if (usedDays.length > 0) {
+    message += `\n${usedDays.length}日分の記録で使われています。その日のジムは未設定になります。`;
   }
+  if (!confirm(message)) return;
 
-  if (button.dataset.action === "delete") {
-    const usedDays = data.dayGyms.filter((d) => d.gymId === gym.id);
+  for (const d of usedDays) d.gymId = null;
+  data.gyms = data.gyms.filter((g) => g.id !== gym.id);
 
-    let message = `「${gym.name}」を削除しますか？`;
-    if (usedDays.length > 0) {
-      message += `\n${usedDays.length}日分の記録で使われています。その日のジムは未設定になります。`;
-    }
-    if (!confirm(message)) return;
-
-    for (const d of usedDays) d.gymId = null;
-    data.gyms = data.gyms.filter((g) => g.id !== gym.id);
-  }
-
+  resetGymForm();
   saveData();
   refreshAll();
 });
@@ -2130,6 +2162,7 @@ importFile.addEventListener("change", async () => {
   saveData();
   closeEditor();
   resetExerciseForm();
+  resetGymForm();
   refreshAll();
   alert("読み込みが完了しました。");
 });

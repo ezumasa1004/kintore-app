@@ -1,6 +1,6 @@
 // ===== キャッシュの名前（＝アプリのバージョン） =====
 // ⚠️ アプリを更新するときは、必ずこの数字を増やす（v1 → v2 → v3 …）
-const CACHE_NAME = "kintore-v11";
+const CACHE_NAME = "kintore-v12";
 
 // オフラインでも使えるように保存しておくファイル
 const FILES = [

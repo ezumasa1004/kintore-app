@@ -167,63 +167,86 @@
     </section>
 
     <section id="view-settings" class="view">
-      <h2 class="section-title">種目の管理</h2>
+      <!-- 種目の管理 -->
+      <div class="settings-caption">種目の管理</div>
+      <div class="card settings-group">
+        <button type="button" id="exercise-add-row" class="settings-row settings-action">＋ 種目を登録</button>
 
-      <form id="exercise-form" class="card">
-        <label class="field">
-          <span>種目名</span>
-          <input id="exercise-name" type="text" placeholder="例：ベンチプレス" required>
-        </label>
+        <form id="exercise-form" class="settings-form" hidden>
+          <label class="field">
+            <span>種目名</span>
+            <input id="exercise-name" type="text" placeholder="例：ベンチプレス" required>
+          </label>
 
-        <label class="field">
-          <span>部位</span>
-          <select id="exercise-part"></select>
-        </label>
+          <label class="field">
+            <span>部位</span>
+            <select id="exercise-part"></select>
+          </label>
 
-        <label class="field">
-          <span>種類</span>
-          <select id="exercise-type">
-            <option value="weight">重量</option>
-            <option value="bodyweight">自重（加重・補助あり）</option>
-            <option value="time">時間（秒）</option>
-          </select>
-        </label>
+          <label class="field">
+            <span>種類</span>
+            <select id="exercise-type">
+              <option value="weight">重量</option>
+              <option value="bodyweight">自重（加重・補助あり）</option>
+              <option value="time">時間（秒）</option>
+            </select>
+          </label>
 
-        <div class="form-buttons">
-          <button type="submit" id="exercise-submit" class="btn btn-primary">追加</button>
-          <button type="button" id="exercise-cancel" class="btn btn-secondary" hidden>キャンセル</button>
-        </div>
-      </form>
+          <div class="form-buttons">
+            <button type="button" id="exercise-cancel" class="btn btn-secondary">キャンセル</button>
+            <button type="submit" id="exercise-submit" class="btn btn-primary">登録</button>
+          </div>
+          <button type="button" id="exercise-delete" class="btn btn-block btn-danger settings-delete"
+            hidden>この種目を削除</button>
+        </form>
 
-      <div id="exercise-list"></div>
-      <h2 class="section-title section-gap">ジムの管理</h2>
-      <form id="gym-form" class="card gym-form">
-        <input id="gym-name" type="text" placeholder="例：〇〇フィットネス 三宮店" required>
-        <button type="submit" class="btn-small btn-save">追加</button>
-      </form>
-      <div id="gym-list"></div>
-      <h2 class="section-title section-gap">単位</h2>
-      <div class="card">
-        <div id="unit-switch" class="segmented">
-          <button type="button" data-unit="kg">kg</button>
-          <button type="button" data-unit="lbs">lbs</button>
+        <div id="exercise-list"></div>
+      </div>
+
+      <!-- ジムの管理 -->
+      <div class="settings-caption">ジムの管理</div>
+      <div class="card settings-group">
+        <button type="button" id="gym-add-row" class="settings-row settings-action">＋ ジムを登録</button>
+
+        <form id="gym-form" class="settings-form" hidden>
+          <label class="field">
+            <span>ジムの名前</span>
+            <input id="gym-name" type="text" placeholder="例：〇〇フィットネス 三宮店" required>
+          </label>
+
+          <div class="form-buttons">
+            <button type="button" id="gym-cancel" class="btn btn-secondary">キャンセル</button>
+            <button type="submit" id="gym-submit" class="btn btn-primary">登録</button>
+          </div>
+          <button type="button" id="gym-delete" class="btn btn-block btn-danger settings-delete" hidden>このジムを削除</button>
+        </form>
+
+        <div id="gym-list"></div>
+      </div>
+
+      <!-- 表示 -->
+      <div class="settings-caption">表示</div>
+      <div class="card settings-group">
+        <div class="settings-row">
+          <span class="settings-label">単位</span>
+          <div id="unit-switch" class="segmented settings-segmented">
+            <button type="button" data-unit="kg">kg</button>
+            <button type="button" data-unit="lbs">lbs</button>
+          </div>
         </div>
       </div>
 
-      <h2 class="section-title section-gap">データのバックアップ</h2>
-      <div class="card">
-        <p id="data-summary" class="data-summary"></p>
-        <div class="form-buttons">
-          <button type="button" id="export-button" class="btn btn-primary">書き出す</button>
-          <button type="button" id="import-button" class="btn btn-secondary">読み込む</button>
-        </div>
-        <input type="file" id="import-file" accept=".json,application/json" hidden>
-        <p class="data-note">
-          書き出したファイルは「ファイル」アプリやGoogleドライブなどに保存してください。<br>
-          読み込むと、今のデータはすべて置き換わります。
-        </p>
+      <!-- データ -->
+      <div class="settings-caption">データ</div>
+      <div class="card settings-group">
+        <button type="button" id="export-button" class="settings-row settings-action">書き出す</button>
+        <button type="button" id="import-button" class="settings-row settings-action">読み込む</button>
       </div>
-    </section>
+      <input type="file" id="import-file" accept=".json,application/json" hidden>
+      <p id="data-summary" class="settings-footnote"></p>
+      <p class="settings-footnote">
+        書き出したファイルは「ファイル」アプリやGoogleドライブなどに保存してください。読み込むと、今のデータはすべて置き換わります。
+      </p>
     </section>
   </main>
 
