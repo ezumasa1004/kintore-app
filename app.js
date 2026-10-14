@@ -554,16 +554,6 @@ function renderDateLabel() {
   recordDateLabel.textContent = `${y}/${m}/${d}(${WEEKDAYS[date.getDay()]})`;
 }
 
-// PCでは、透明な入力欄をクリックしても日付選択が開かないことがあるので、自分で開く
-recordDate.addEventListener("click", () => {
-  if (typeof recordDate.showPicker === "function") {
-    try {
-      recordDate.showPicker();
-    } catch {
-      // すでに開いているときなどは何もしない
-    }
-  }
-});
 
 // --- 日付の切り替え ---
 function changeDate(days) {
@@ -1133,13 +1123,6 @@ recordList.addEventListener("click", (event) => {
 datePrev.addEventListener("click", () => changeDate(-1));
 dateNext.addEventListener("click", () => changeDate(1));
 
-recordDate.addEventListener("change", () => {
-  if (recordDate.value === "") {
-    recordDate.value = toDateString(new Date()); // 日付が消されたら今日にする
-  }
-  closeEditor();
-  renderRecordList();
-});
 
 // ===== 部位ごとの最終実施日 =====
 const lastDoneList = document.querySelector("#last-done-list");
@@ -1226,21 +1209,17 @@ function collectPartsByDate() {
   return map;
 }
 
-function renderCalendar() {
-  const year = calendarMonth.getFullYear();
-  const month = calendarMonth.getMonth(); // 0〜11
-
-  calTitle.textContent = `${year}年${month + 1}月`;
-
+// 1か月分の日付のマスのHTMLを作る（カレンダータブと、日付を選ぶポップアップの両方で使う）
+// selected：黄緑の枠を付ける日付
+function calendarCellsHtml(year, month, selected) {
   // 1日の前に入れる空白の数（月曜始まり：月=0, 火=1, …, 土=5, 日=6）
   const blanks = (new Date(year, month, 1).getDay() + 6) % 7;
-  const daysInMonth = new Date(year, month + 1, 0).getDate();  // その月の日数
+  const daysInMonth = new Date(year, month + 1, 0).getDate(); // その月の日数
   const today = toDateString(new Date());
   const partsByDate = collectPartsByDate();
 
   let html = "";
 
-  // 1日より前の空白のマス
   for (let i = 0; i < blanks; i++) {
     html += `<div class="cal-cell empty"></div>`;
   }
@@ -1256,13 +1235,12 @@ function renderCalendar() {
     if (weekday === 0) classes.push("sun");
     if (weekday === 6) classes.push("sat");
     if (dateText === today) classes.push("today");
-    if (dateText === selectedDate) classes.push("selected");
+    if (dateText === selected) classes.push("selected");
 
     let dotsHtml = "";
     if (parts !== undefined) {
       trainedDays++;
       classes.push("trained");
-      // PARTS の順番で点を並べる（毎回同じ並びになるように）
       for (const part of PARTS) {
         if (parts.has(part.id)) {
           dotsHtml += `<span class="cal-dot" style="background:${part.color}"></span>`;
@@ -1277,9 +1255,20 @@ function renderCalendar() {
       </button>`;
   }
 
-  calGrid.innerHTML = html;
+  return { html: html, trainedDays: trainedDays };
+}
+
+function renderCalendar() {
+  const year = calendarMonth.getFullYear();
+  const month = calendarMonth.getMonth(); // 0〜11
+
+  calTitle.textContent = `${year}年${month + 1}月`;
+
+  const result = calendarCellsHtml(year, month, selectedDate);
+  calGrid.innerHTML = result.html;
+
   calSummaryLabel.textContent = `${month + 1}月のトレーニング`;
-  calSummary.textContent = trainedDays;
+  calSummary.textContent = result.trainedDays;
   renderCalendarDetail();
 }
 
@@ -2220,6 +2209,74 @@ function showUpdateBanner(worker) {
 updateButton.addEventListener("click", () => {
   if (draft !== null && !confirm("入力中の記録は破棄されます。更新しますか？")) return;
   waitingWorker.postMessage("skipWaiting");
+});
+
+// ===== 日付を選ぶポップアップ =====
+const dateOpen = document.querySelector("#date-open");
+const datePicker = document.querySelector("#date-picker");
+const pickerPrev = document.querySelector("#picker-prev");
+const pickerNext = document.querySelector("#picker-next");
+const pickerTitle = document.querySelector("#picker-title");
+const pickerGrid = document.querySelector("#picker-grid");
+const pickerToday = document.querySelector("#picker-today");
+const pickerClose = document.querySelector("#picker-close");
+
+// ポップアップで表示している月（その月の1日）
+let pickerMonth = null;
+
+function renderDatePicker() {
+  const year = pickerMonth.getFullYear();
+  const month = pickerMonth.getMonth();
+
+  pickerTitle.textContent = `${year}年${month + 1}月`;
+  pickerGrid.innerHTML = calendarCellsHtml(year, month, recordDate.value).html;
+}
+
+function openDatePicker() {
+  // 今選んでいる日付の月から表示する
+  const date = fromDateString(recordDate.value);
+  pickerMonth = new Date(date.getFullYear(), date.getMonth(), 1);
+
+  renderDatePicker();
+  datePicker.classList.add("open");
+  document.body.style.overflow = "hidden";
+}
+
+function closeDatePicker() {
+  datePicker.classList.remove("open");
+  document.body.style.overflow = "";
+}
+
+// 日付を決めて、記録タブをその日にする
+function selectRecordDate(dateText) {
+  recordDate.value = dateText;
+  closeEditor();
+  renderRecordList();
+  closeDatePicker();
+}
+
+function changePickerMonth(diff) {
+  pickerMonth = new Date(pickerMonth.getFullYear(), pickerMonth.getMonth() + diff, 1);
+  renderDatePicker();
+}
+
+dateOpen.addEventListener("click", openDatePicker);
+pickerPrev.addEventListener("click", () => changePickerMonth(-1));
+pickerNext.addEventListener("click", () => changePickerMonth(1));
+pickerToday.addEventListener("click", () => selectRecordDate(toDateString(new Date())));
+pickerClose.addEventListener("click", closeDatePicker);
+
+datePicker.addEventListener("click", (event) => {
+  // 暗い部分をタップしたら、日付を変えずに閉じる
+  if (event.target === datePicker) {
+    closeDatePicker();
+    return;
+  }
+
+  // 日付のマスをタップしたら、その日に移る
+  const cell = event.target.closest("button[data-date]");
+  if (cell === null) return;
+  selectRecordDate(cell.dataset.date);
 });
 
 // ===== 起動画面 =====
