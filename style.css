@@ -349,7 +349,13 @@ textarea:focus {
 .date-display {
   flex: 1;
   min-width: 0;
-  padding: 8px;
+  min-height: 52px; /* 1行のときも2行のときも、同じ高さにする */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  padding: 6px 8px;
   border: none;
   border-radius: var(--radius-field);
   background: none;
@@ -359,6 +365,25 @@ textarea:focus {
   font-weight: bold;
   text-align: center;
   cursor: pointer;
+}
+
+/* 「今日」「昨日」などの言葉 */
+.date-word {
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+/* 今日のときは、言葉を黄緑にする */
+.date-display.is-today .date-word {
+  color: var(--accent);
+}
+
+/* 言葉があるときは、日付を小さな灰色の文字にする */
+.date-display.has-word .date-label {
+  font-size: 12px;
+  font-weight: normal;
+  color: var(--muted);
 }
 
 /* ===== 記録画面：入力 ===== */

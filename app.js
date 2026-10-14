@@ -509,8 +509,8 @@ exerciseList.addEventListener("click", (event) => {
 
 // ===== トレーニング記録 =====
 const recordDate = document.querySelector("#record-date");
-const recordDateLabel =
-  document.querySelector("#record-date-label");
+const recordDateLabel = document.querySelector("#record-date-label");
+const recordDateWord = document.querySelector("#record-date-word");
 const datePrev = document.querySelector("#date-prev");
 const dateNext = document.querySelector("#date-next");
 const addExerciseButton = document.querySelector("#add-exercise-button");
@@ -597,12 +597,32 @@ exerciseSheet.addEventListener("click", (event) => {
 });
 
 // --- 日付の表示（例：2026/10/14(水)） ---
+// 言葉で表示する日（何日前か → 言葉）
+const DATE_WORDS = ["今日", "昨日", "一昨日", "3日前"];
+
+// --- 日付の表示 ---
+// 今日〜3日前：「今日」などの言葉を大きく、日付を小さく
+// それ以外  ：日付だけ（例：2026/10/10(土)）
 function renderDateLabel() {
   const date = fromDateString(recordDate.value);
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, "0");
   const d = String(date.getDate()).padStart(2, "0");
   recordDateLabel.textContent = `${y}/${m}/${d}(${WEEKDAYS[date.getDay()]})`;
+
+  // 今日から何日前か（未来の日はマイナスになる）
+  const daysAgo = daysBetween(recordDate.value, toDateString(new Date()));
+  const word = DATE_WORDS[daysAgo]; // 0〜3以外なら undefined
+
+  if (word === undefined) {
+    recordDateWord.hidden = true;
+  } else {
+    recordDateWord.textContent = word;
+    recordDateWord.hidden = false;
+  }
+
+  dateOpen.classList.toggle("has-word", word !== undefined);
+  dateOpen.classList.toggle("is-today", daysAgo === 0);
 }
 
 
