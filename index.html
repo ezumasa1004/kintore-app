@@ -33,8 +33,10 @@
       <div class="card date-bar">
         <button type="button" id="date-prev" class="btn-icon">‹</button>
         <button type="button" id="date-open" class="date-display">
-          <span id="record-date-word" class="date-word" hidden></span>
-          <span id="record-date-label" class="date-label"></span>
+          <span id="date-inner" class="date-inner">
+            <span id="record-date-word" class="date-word" hidden></span>
+            <span id="record-date-label" class="date-label"></span>
+          </span>
         </button>
         <input type="hidden" id="record-date">
         <button type="button" id="date-next" class="btn-icon">›</button>
@@ -112,7 +114,7 @@
     </section>
 
     <section id="view-calendar" class="view">
-      <div class="card">
+      <div class="card cal-card">
         <div class="cal-header">
           <button type="button" id="cal-prev" class="btn-icon">‹</button>
           <div id="cal-title" class="cal-title"></div>

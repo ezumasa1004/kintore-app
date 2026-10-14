@@ -3053,6 +3053,144 @@ photoImportInput.addEventListener("change", async () => {
   }
 });
 
+// ===== スワイプ =====
+const SWIPE_DISTANCE = 50; // これ以上横に動かしたら「スワイプした」とみなす（px）
+const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+// area：スワイプを受け付ける場所
+// target：指についてきて動く部分
+// onSwipe(direction)：スワイプしたときの処理（direction は -1：前、1：次）
+function addSwipe(area, target, onSwipe) {
+  let pointerId = null;        // 今動かしている指（またはマウス）
+  let startX = 0;
+  let startY = 0;
+  let moveX = 0;               // 横に動いた距離
+  let dragging = false;        // 横のスワイプとして動かしているか
+  let animating = false;       // 切り替えのアニメーション中か
+  let suppressClick = false;   // スワイプの後のクリックを取り消すか
+
+  // 中身を、指定した位置まで動かす（アニメーションの長さを ms で指定。0なら一瞬で）
+  function moveTarget(x, opacity, ms) {
+    target.style.transition = ms > 0 ? `transform ${ms}ms ease-out, opacity ${ms}ms` : "none";
+    target.style.transform = `translateX(${x}px)`;
+    target.style.opacity = opacity;
+  }
+
+  // 元の位置に戻す
+  function snapBack() {
+    moveTarget(0, 1, 200);
+  }
+
+  // 滑るように次（前）に切り替える
+  async function slide(direction) {
+    if (reduceMotion.matches) {
+      // 「視差効果を減らす」がオンのときは、動かさずにすぐ切り替える
+      moveTarget(0, 1, 0);
+      onSwipe(direction);
+      return;
+    }
+
+    animating = true;
+    const width = target.offsetWidth;
+
+    // ① 今の中身を、指を動かした方向へ滑らせて消す
+    moveTarget(direction > 0 ? -width : width, 0, 150);
+    await sleep(150);
+
+    // ② 中身を新しい日（月）に描き直す
+    onSwipe(direction);
+
+    // ③ 新しい中身を反対側に置いてから、真ん中まで滑らせる
+    moveTarget(direction > 0 ? width : -width, 0, 0);
+    void target.offsetWidth; // 位置を確定させてから、次のアニメーションを始める
+    moveTarget(0, 1, 200);
+    await sleep(200);
+
+    animating = false;
+  }
+
+  area.addEventListener("pointerdown", (event) => {
+    if (animating) return;
+    if (event.pointerType === "mouse" && event.button !== 0) return; // 左クリック以外は無視
+
+    pointerId = event.pointerId;
+    startX = event.clientX;
+    startY = event.clientY;
+    moveX = 0;
+    dragging = false;
+    suppressClick = false;
+  });
+
+  area.addEventListener("pointermove", (event) => {
+    if (event.pointerId !== pointerId) return;
+
+    const dx = event.clientX - startX;
+    const dy = event.clientY - startY;
+
+    if (!dragging) {
+      if (Math.abs(dx) < 10) return; // まだ少ししか動いていない
+      if (Math.abs(dy) > Math.abs(dx)) {
+        pointerId = null; // 縦の動きなので、スワイプではない（スクロールに任せる）
+        return;
+      }
+      dragging = true;
+      area.setPointerCapture(event.pointerId); // 指が枠の外に出ても、動きを受け取り続ける
+    }
+
+    moveX = dx;
+    moveTarget(moveX, 1, 0); // 指についてくる
+  });
+
+  area.addEventListener("pointerup", (event) => {
+    if (event.pointerId !== pointerId) return;
+    pointerId = null;
+    if (!dragging) return; // 動かしていなければ、普通のタップ
+
+    dragging = false;
+    suppressClick = true; // この後に起きるクリックは取り消す
+
+    if (Math.abs(moveX) >= SWIPE_DISTANCE) {
+      slide(moveX < 0 ? 1 : -1); // 左へ動かしたら次、右へ動かしたら前
+    } else {
+      snapBack();
+    }
+  });
+
+  area.addEventListener("pointercancel", (event) => {
+    if (event.pointerId !== pointerId) return;
+    pointerId = null;
+    if (dragging) {
+      dragging = false;
+      snapBack();
+    }
+  });
+
+  // スワイプした直後のクリック（日付の欄を押した、日付を選んだ、など）を取り消す
+  area.addEventListener(
+    "click",
+    (event) => {
+      if (!suppressClick) return;
+      suppressClick = false;
+      event.stopPropagation();
+      event.preventDefault();
+    },
+    true
+  );
+}
+
+// 記録タブの日付の欄：前の日・次の日
+addSwipe(
+  document.querySelector(".date-bar"),
+  document.querySelector("#date-inner"),
+  (direction) => changeDate(direction)
+);
+
+// カレンダータブ：前の月・次の月
+addSwipe(calGrid, calGrid, (direction) => changeMonth(direction));
+
+// 日付を選ぶポップアップ：前の月・次の月
+addSwipe(pickerGrid, pickerGrid, (direction) => changePickerMonth(direction));
+
 // ===== 起動画面 =====
 const splash = document.querySelector("#splash");
 

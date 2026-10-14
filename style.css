@@ -1692,3 +1692,26 @@ div.settings-row {
   transform: scale(0.98);
   background: #242426;
 }
+
+/* ===== スワイプ ===== */
+
+/* スワイプできる場所：縦のスクロールだけはブラウザに任せる */
+.date-bar,
+.cal-grid {
+  touch-action: pan-y;
+}
+
+/* 動かした中身が、枠の外にはみ出して見えないようにする */
+.date-display,
+.cal-card,
+.popup {
+  overflow: hidden;
+}
+
+/* 日付の欄の中身（今日などの言葉と日付を、縦に並べる） */
+.date-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
