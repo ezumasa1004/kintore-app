@@ -1623,3 +1623,28 @@ div.settings-row {
   opacity: 0.5;
   cursor: default;
 }
+
+/* ===== 設定：部位ごとにまとめた種目の一覧 ===== */
+.part-row .settings-name {
+  font-weight: bold;
+}
+
+/* 「›」を、開いているときは下向きに回す */
+.part-chevron {
+  display: inline-block;
+  transition: transform 0.2s;
+}
+
+.part-row[aria-expanded="true"] .part-chevron {
+  transform: rotate(90deg);
+}
+
+/* 開いた部位の中の種目（少し右に下げる） */
+.part-children {
+  padding-left: 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.part-children:last-child {
+  border-bottom: none;
+}

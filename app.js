@@ -331,7 +331,7 @@ const exerciseDelete = document.querySelector("#exercise-delete");
 const exerciseList = document.querySelector("#exercise-list");
 
 let editingId = null; // 編集中の種目のID（編集していないときは null）
-
+const openParts = new Set(); // 開いている部位のID
 function renderPartOptions() {
   exercisePart.innerHTML = PARTS
     .map((part) => `<option value="${part.id}">${part.name}</option>`)
@@ -339,20 +339,42 @@ function renderPartOptions() {
 }
 
 // 種目の一覧（部位の順に、1種目1行で並べる）
+// 種目の一覧（部位ごとにまとめて、押すと開く）
 function renderExerciseList() {
   let html = "";
 
   for (const part of PARTS) {
     const list = data.exercises.filter((ex) => ex.part === part.id);
+    if (list.length === 0) continue; // 種目がない部位は表示しない
+
+    const isOpen = openParts.has(part.id);
+
+    // 部位の行
+    html += `
+      <button type="button" class="settings-row part-row" data-part="${part.id}" aria-expanded="${isOpen}">
+        <span class="part-dot" style="background:${part.color}"></span>
+        <span class="settings-name">${part.name}</span>
+        <span class="settings-meta">${list.length}種目</span>
+        <span class="settings-chevron part-chevron">›</span>
+      </button>`;
+
+    if (!isOpen) continue;
+
+    // 開いているときだけ、その部位の種目と登録の行を表示する
+    html += `<div class="part-children">`;
     for (const ex of list) {
       html += `
         <button type="button" class="settings-row" data-id="${ex.id}">
-          <span class="part-dot" style="background:${part.color}"></span>
           <span class="settings-name">${escapeHtml(ex.name)}</span>
           <span class="settings-meta">${TYPE_NAMES[ex.type]}</span>
           <span class="settings-chevron">›</span>
         </button>`;
     }
+    html += `
+        <button type="button" class="settings-row settings-action" data-add-part="${part.id}">
+          ＋ ${part.name}の種目を登録
+        </button>
+      </div>`;
   }
 
   if (html === "") {
@@ -372,12 +394,16 @@ function resetExerciseForm() {
 }
 
 // 「＋ 種目を登録」：新しく登録するフォームを開く
-function openExerciseFormForAdd() {
+// partId を渡すと、部位が最初からその部位になる
+function openExerciseFormForAdd(partId = null) {
   resetExerciseForm();
+  if (partId !== null) exercisePart.value = partId;
+
   exerciseSubmit.textContent = "登録";
   exerciseDelete.hidden = true;
   exerciseForm.hidden = false;
   exerciseAddRow.hidden = true;
+  exerciseForm.scrollIntoView({ behavior: "smooth", block: "center" });
   exerciseName.focus();
 }
 
@@ -426,35 +452,59 @@ exerciseForm.addEventListener("submit", (event) => {
 
   const name = exerciseName.value.trim();
   if (name === "") return;
+  const partId = exercisePart.value;
 
   if (editingId === null) {
     data.exercises.push({
       id: createId(),
       name: name,
-      part: exercisePart.value,
+      part: partId,
       type: exerciseType.value,
     });
   } else {
     const ex = getExercise(editingId);
     ex.name = name;
-    ex.part = exercisePart.value;
+    ex.part = partId;
     ex.type = exerciseType.value;
   }
 
+  openParts.add(partId); // 登録・更新した種目の部位を開いておく
   saveData();
   resetExerciseForm();
   refreshAll();
 });
 
-exerciseAddRow.addEventListener("click", openExerciseFormForAdd);
+exerciseAddRow.addEventListener("click", () => openExerciseFormForAdd());
 exerciseCancel.addEventListener("click", resetExerciseForm);
 exerciseDelete.addEventListener("click", () => deleteExercise(editingId));
 
-// 種目の行を押したとき
+// 一覧の中の行を押したとき
 exerciseList.addEventListener("click", (event) => {
-  const row = event.target.closest("button[data-id]");
-  if (row === null) return;
-  startEdit(row.dataset.id);
+  const button = event.target.closest("button");
+  if (button === null) return;
+
+  // 部位の行：開く・閉じる
+  if (button.dataset.part !== undefined) {
+    const partId = button.dataset.part;
+    if (openParts.has(partId)) {
+      openParts.delete(partId);
+    } else {
+      openParts.add(partId);
+    }
+    renderExerciseList();
+    return;
+  }
+
+  // 「＋ ○○の種目を登録」の行
+  if (button.dataset.addPart !== undefined) {
+    openExerciseFormForAdd(button.dataset.addPart);
+    return;
+  }
+
+  // 種目の行：編集する
+  if (button.dataset.id !== undefined) {
+    startEdit(button.dataset.id);
+  }
 });
 
 // ===== トレーニング記録 =====
