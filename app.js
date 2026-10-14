@@ -408,6 +408,8 @@ exerciseList.addEventListener("click", (event) => {
 
 // ===== トレーニング記録 =====
 const recordDate = document.querySelector("#record-date");
+const recordDateLabel = 
+document.querySelector("#record-date-label");
 const datePrev = document.querySelector("#date-prev");
 const dateNext = document.querySelector("#date-next");
 const exerciseSelect = document.querySelector("#exercise-select");
@@ -441,6 +443,26 @@ function renderExerciseSelect() {
 
   exerciseSelect.innerHTML = html;
 }
+
+// --- 日付の表示（例：2026/10/14(水)） ---
+function renderDateLabel() {
+  const date = fromDateString(recordDate.value);
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  recordDateLabel.textContent = `${y}/${m}/${d}(${WEEKDAYS[date.getDay()]})`;
+}
+
+// PCでは、透明な入力欄をクリックしても日付選択が開かないことがあるので、自分で開く
+recordDate.addEventListener("click", () => {
+  if (typeof recordDate.showPicker === "function") {
+    try {
+      recordDate.showPicker();
+    } catch {
+      // すでに開いているときなどは何もしない
+    }
+  }
+});
 
 // --- 日付の切り替え ---
 function changeDate(days) {
@@ -738,6 +760,7 @@ function recordCardHtml(record, showButtons) {
 
 function renderRecordList() {
   renderBodyCard(); // 日付が変わったときに、体重の欄も更新する
+  renderDateLabel();
   const records = data.records.filter((r) => r.date === recordDate.value);
 
   if (records.length === 0) {
