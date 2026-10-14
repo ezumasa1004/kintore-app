@@ -1015,6 +1015,7 @@ function renderRecordList() {
   renderBodyCard(); // 日付が変わったときに、体重の欄も更新する
   renderDateLabel();
   renderGymSelect();
+  renderRecordPhotos(); // 日付が変わったときに、写真の欄も更新する  
 
   const records = data.records.filter((r) => r.date === recordDate.value);
 
@@ -1286,6 +1287,7 @@ function renderCalendarDetail() {
       <h2 class="section-title">${formatLongDate(selectedDate)}</h2>
       <button type="button" class="btn-small" data-action="open-record">記録画面で開く</button>
     </div>`;
+
   // その日のジム
   const dayGym = findDayGym(selectedDate);
   if (dayGym !== null && dayGym.gymId !== null) {
@@ -1298,7 +1300,11 @@ function renderCalendarDetail() {
     html += records.map((r) => recordCardHtml(r, false)).join("");
   }
 
+  // その日の写真（中身は renderCalendarPhotos() で後から入れる）
+  html += `<div id="cal-photo-list" class="photo-grid detail-photos"></div>`;
+
   calDetail.innerHTML = html;
+  renderCalendarPhotos();
 }
 
 // 色の凡例
@@ -2277,6 +2283,320 @@ datePicker.addEventListener("click", (event) => {
   const cell = event.target.closest("button[data-date]");
   if (cell === null) return;
   selectRecordDate(cell.dataset.date);
+});
+
+// ===== 写真 =====
+const PHOTO_DB_NAME = "kintore-photos"; // 写真用のデータベースの名前
+const PHOTO_STORE = "photos";           // 写真を入れる入れ物の名前
+const PHOTO_MAX_SIZE = 1280;            // 長い辺を何ピクセルに縮めるか
+const PHOTO_QUALITY = 0.8;              // JPEGの画質（0〜1）
+
+// --- IndexedDB（写真の保存場所）の準備 ---
+let photoDbPromise = null;
+
+function openPhotoDb() {
+  if (photoDbPromise === null) {
+    photoDbPromise = new Promise((resolve, reject) => {
+      const request = indexedDB.open(PHOTO_DB_NAME, 1);
+
+      // 初めて開いたとき：写真を入れる入れ物を作る
+      request.onupgradeneeded = () => {
+        const db = request.result;
+        const store = db.createObjectStore(PHOTO_STORE, { keyPath: "id" });
+        store.createIndex("date", "date"); // 日付で探せるようにする
+      };
+
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  }
+  return photoDbPromise;
+}
+
+// IndexedDBの1回分の操作を、await で待てる形にする
+function requestToPromise(request) {
+  return new Promise((resolve, reject) => {
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+// 写真を1枚保存する
+async function addPhoto(photo) {
+  const db = await openPhotoDb();
+  const store = db.transaction(PHOTO_STORE, "readwrite").objectStore(PHOTO_STORE);
+  await requestToPromise(store.add(photo));
+}
+
+// その日の写真を、撮った順に取り出す
+async function getPhotosByDate(date) {
+  const db = await openPhotoDb();
+  const store = db.transaction(PHOTO_STORE, "readonly").objectStore(PHOTO_STORE);
+  const photos = await requestToPromise(store.index("date").getAll(date));
+  return photos.sort((a, b) => a.createdAt - b.createdAt);
+}
+
+// 写真を1枚削除する
+async function deletePhoto(id) {
+  const db = await openPhotoDb();
+  const store = db.transaction(PHOTO_STORE, "readwrite").objectStore(PHOTO_STORE);
+  await requestToPromise(store.delete(id));
+}
+
+// iPhoneに「このアプリのデータを消さないで」とお願いする
+async function requestPersistentStorage() {
+  if (navigator.storage && navigator.storage.persist) {
+    try {
+      await navigator.storage.persist();
+    } catch {
+      // お願いできなかったときは何もしない
+    }
+  }
+}
+
+// --- 写真を縮小・圧縮する ---
+function loadImage(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(img);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("画像を読み込めませんでした"));
+    };
+    img.src = url;
+  });
+}
+
+async function compressImage(file) {
+  const img = await loadImage(file);
+
+  // 長い辺が PHOTO_MAX_SIZE になるように縮める（もともと小さければそのまま）
+  const longSide = Math.max(img.naturalWidth, img.naturalHeight);
+  const scale = Math.min(1, PHOTO_MAX_SIZE / longSide);
+  const width = Math.round(img.naturalWidth * scale);
+  const height = Math.round(img.naturalHeight * scale);
+
+  // キャンバスに小さく描き直して、JPEGにする
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => (blob ? resolve(blob) : reject(new Error("画像を変換できませんでした"))),
+      "image/jpeg",
+      PHOTO_QUALITY
+    );
+  });
+}
+
+// --- 写真を表示するためのURL ---
+// 保存した写真（Blob）を <img> で表示するには、一時的なURLが必要
+const photoUrlCache = new Map(); // 写真のID → URL
+
+function photoUrl(photo) {
+  if (!photoUrlCache.has(photo.id)) {
+    photoUrlCache.set(photo.id, URL.createObjectURL(photo.blob));
+  }
+  return photoUrlCache.get(photo.id);
+}
+
+function forgetPhotoUrl(id) {
+  if (photoUrlCache.has(id)) {
+    URL.revokeObjectURL(photoUrlCache.get(id));
+    photoUrlCache.delete(id);
+  }
+}
+
+// 小さな写真の一覧のHTML
+function photoThumbsHtml(photos) {
+  return photos
+    .map((p, i) => `
+      <button type="button" class="photo-thumb" data-index="${i}">
+        <img src="${photoUrl(p)}" alt="">
+      </button>`)
+    .join("");
+}
+
+// --- 記録タブの写真の欄 ---
+const photoPick = document.querySelector("#photo-pick");
+const photoInput = document.querySelector("#photo-input");
+const photoList = document.querySelector("#photo-list");
+
+let recordPhotos = []; // 記録タブに表示している写真
+
+async function renderRecordPhotos() {
+  const date = recordDate.value;
+
+  let photos;
+  try {
+    photos = await getPhotosByDate(date);
+  } catch (error) {
+    console.error(error);
+    photoList.innerHTML = `<p class="photo-empty">写真を読み込めませんでした</p>`;
+    return;
+  }
+
+  // 読み込んでいる間に日付が変わっていたら、古い結果は使わない
+  if (date !== recordDate.value) return;
+
+  recordPhotos = photos;
+  photoList.innerHTML = photos.length === 0
+    ? `<p class="photo-empty">写真はまだありません</p>`
+    : photoThumbsHtml(photos);
+}
+
+// 「写真から選ぶ」：隠してあるファイル選択を開く
+photoPick.addEventListener("click", () => photoInput.click());
+
+// 写真が選ばれたら、縮小して保存する
+photoInput.addEventListener("change", async () => {
+  const files = Array.from(photoInput.files);
+  photoInput.value = ""; // 同じ写真をもう一度選べるようにする
+  if (files.length === 0) return;
+
+  const date = recordDate.value;
+  photoPick.disabled = true;
+  photoPick.textContent = "保存中…";
+
+  try {
+    for (const file of files) {
+      const blob = await compressImage(file);
+      await addPhoto({ id: createId(), date: date, blob: blob, createdAt: Date.now() });
+    }
+    requestPersistentStorage();
+  } catch (error) {
+    console.error(error);
+    alert("写真を保存できませんでした：" + error.message);
+  } finally {
+    photoPick.disabled = false;
+    photoPick.textContent = "写真から選ぶ";
+  }
+
+  refreshPhotoViews();
+});
+
+// 小さな写真をタップしたら、全画面で表示する
+photoList.addEventListener("click", (event) => {
+  const thumb = event.target.closest(".photo-thumb");
+  if (thumb === null) return;
+  openViewer(recordPhotos, Number(thumb.dataset.index));
+});
+
+// --- カレンダーの詳細の写真 ---
+let calendarPhotos = []; // カレンダーの詳細に表示している写真
+
+async function renderCalendarPhotos() {
+  const date = selectedDate;
+  if (date === null) return;
+
+  let photos;
+  try {
+    photos = await getPhotosByDate(date);
+  } catch (error) {
+    console.error(error);
+    return;
+  }
+
+  // 読み込んでいる間に、選んでいる日が変わっていたら使わない
+  if (date !== selectedDate) return;
+
+  const container = document.querySelector("#cal-photo-list");
+  if (container === null) return;
+
+  calendarPhotos = photos;
+  container.innerHTML = photoThumbsHtml(photos);
+}
+
+calDetail.addEventListener("click", (event) => {
+  const thumb = event.target.closest(".photo-thumb");
+  if (thumb === null) return;
+  openViewer(calendarPhotos, Number(thumb.dataset.index));
+});
+
+// 写真が増えたり減ったりしたときに、写真の表示をまとめて描き直す
+function refreshPhotoViews() {
+  renderRecordPhotos();
+  renderCalendarPhotos();
+}
+
+// --- 全画面表示 ---
+const photoViewer = document.querySelector("#photo-viewer");
+const viewerImage = document.querySelector("#viewer-image");
+const viewerCount = document.querySelector("#viewer-count");
+const viewerClose = document.querySelector("#viewer-close");
+const viewerPrev = document.querySelector("#viewer-prev");
+const viewerNext = document.querySelector("#viewer-next");
+const viewerDelete = document.querySelector("#viewer-delete");
+
+let viewerPhotos = []; // 全画面表示で切り替える写真の一覧
+let viewerIndex = 0;   // 今表示している写真の番号
+
+function openViewer(photos, index) {
+  viewerPhotos = photos;
+  viewerIndex = index;
+  renderViewer();
+  photoViewer.classList.add("open");
+  document.body.style.overflow = "hidden";
+}
+
+function closeViewer() {
+  photoViewer.classList.remove("open");
+  document.body.style.overflow = "";
+}
+
+function renderViewer() {
+  const photo = viewerPhotos[viewerIndex];
+  viewerImage.src = photoUrl(photo);
+  viewerCount.textContent = `${viewerIndex + 1} / ${viewerPhotos.length}`;
+  viewerPrev.disabled = viewerIndex === 0;
+  viewerNext.disabled = viewerIndex === viewerPhotos.length - 1;
+}
+
+viewerClose.addEventListener("click", closeViewer);
+
+viewerPrev.addEventListener("click", () => {
+  if (viewerIndex > 0) {
+    viewerIndex--;
+    renderViewer();
+  }
+});
+
+viewerNext.addEventListener("click", () => {
+  if (viewerIndex < viewerPhotos.length - 1) {
+    viewerIndex++;
+    renderViewer();
+  }
+});
+
+viewerDelete.addEventListener("click", async () => {
+  if (!confirm("この写真を削除しますか？")) return;
+
+  const photo = viewerPhotos[viewerIndex];
+  try {
+    await deletePhoto(photo.id);
+  } catch (error) {
+    console.error(error);
+    alert("写真を削除できませんでした：" + error.message);
+    return;
+  }
+
+  forgetPhotoUrl(photo.id);
+  viewerPhotos = viewerPhotos.filter((p) => p.id !== photo.id);
+
+  if (viewerPhotos.length === 0) {
+    closeViewer();
+  } else {
+    viewerIndex = Math.min(viewerIndex, viewerPhotos.length - 1);
+    renderViewer();
+  }
+
+  refreshPhotoViews();
 });
 
 // ===== 起動画面 =====

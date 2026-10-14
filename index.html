@@ -96,6 +96,14 @@
 
       <h2 class="section-title">この日の記録</h2>
       <div id="record-list"></div>
+      <h2 class="section-title section-gap">写真</h2>
+      <div class="card">
+        <div class="photo-buttons">
+          <button type="button" id="photo-pick" class="btn btn-secondary">写真から選ぶ</button>
+        </div>
+        <input type="file" id="photo-input" accept="image/*" multiple hidden>
+        <div id="photo-list" class="photo-grid"></div>
+      </div>
       <h2 class="section-title">部位ごとの最終実施日</h2>
       <div id="last-done-list" class="last-done-grid"></div>
     </section>
@@ -292,6 +300,20 @@
         <button type="button" id="picker-today" class="btn-small">今日</button>
         <button type="button" id="picker-close" class="btn-small">閉じる</button>
       </div>
+    </div>
+  </div>
+
+  <!-- 写真の全画面表示 -->
+  <div id="photo-viewer" class="viewer" role="dialog" aria-label="写真">
+    <div class="viewer-top">
+      <span id="viewer-count" class="viewer-count"></span>
+      <button type="button" id="viewer-close" class="sheet-close" aria-label="閉じる">×</button>
+    </div>
+    <img id="viewer-image" class="viewer-image" alt="">
+    <div class="viewer-bottom">
+      <button type="button" id="viewer-prev" class="btn-icon">‹</button>
+      <button type="button" id="viewer-delete" class="btn-small btn-danger">削除</button>
+      <button type="button" id="viewer-next" class="btn-icon">›</button>
     </div>
   </div>
 
