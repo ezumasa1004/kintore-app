@@ -294,7 +294,12 @@ function showView(name) {
   tab.classList.add("active");
 
   pageTitle.textContent = tab.querySelector(".tab-label").textContent;
-  if (name === "graph") renderGraph();
+  if (name === "graph") {
+    // グラフタブを開いたら、毎回「体重」から表示する
+    graphExerciseId = "body";
+    graphMetricId = null;
+    renderGraph();
+  }
 }
 
 tabs.forEach((tab) => {
