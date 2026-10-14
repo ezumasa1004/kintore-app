@@ -1191,6 +1191,7 @@ const calNext = document.querySelector("#cal-next");
 const calTitle = document.querySelector("#cal-title");
 const calGrid = document.querySelector("#cal-grid");
 const calSummary = document.querySelector("#cal-summary");
+const calSummaryLabel = document.querySelector("#cal-summary-label");
 const calToday = document.querySelector("#cal-today");
 const calLegend = document.querySelector("#cal-legend");
 const calDetail = document.querySelector("#cal-detail");
@@ -1274,7 +1275,8 @@ function renderCalendar() {
   }
 
   calGrid.innerHTML = html;
-  calSummary.textContent = `今月のトレーニング：${trainedDays}日`;
+  calSummaryLabel.textContent = `${month + 1}月のトレーニング`;
+  calSummary.textContent = trainedDays;
   renderCalendarDetail();
 }
 
@@ -1732,6 +1734,8 @@ const chartWrap = document.querySelector("#chart-wrap");
 const graphCanvas = document.querySelector("#graph-canvas");
 const graphEmpty = document.querySelector("#graph-empty");
 const graphSummary = document.querySelector("#graph-summary");
+const graphTitle = document.querySelector("#graph-title");
+const graphSubtitle = document.querySelector("#graph-subtitle");
 
 let graphExerciseId = null; // 表示中の種目
 let graphMetricId = null;   // 表示中の指標
@@ -1840,6 +1844,8 @@ function renderGraph() {
   renderGraphControls();
 
   if (graphExerciseId === null) {
+    graphTitle.textContent = "";
+    graphSubtitle.textContent = "";
     showGraphEmpty("記録がまだありません");
     return;
   }
@@ -1848,6 +1854,9 @@ function renderGraph() {
   const metrics = isBody ? BODY_METRICS : METRICS[getExercise(graphExerciseId).type];
   const metric = metrics.find((m) => m.id === graphMetricId);
   const label = metricUnitLabel(metric);
+  // グラフの見出し（例：「ベンチプレス　推定1RM」）
+  graphTitle.textContent = isBody ? "体重・体脂肪率" : getExercise(graphExerciseId).name;
+  graphSubtitle.textContent = metric.name;
   const start = periodStartDate(graphPeriod);
 
   // 体重でも種目でも、{ date, value } という同じ形のリストにそろえる
@@ -1929,7 +1938,20 @@ function renderGraph() {
 }
 
 // グラフの下のまとめ
-// colorize が true のとき、増えたら緑・減ったら赤で表示する
+// まとめの小さなカード1枚分のHTML
+function summaryTileHtml(title, value, unitLabel, sub, valueClass = "") {
+  return `
+    <div class="card summary-tile">
+      <div class="summary-label">${title}</div>
+      <div class="summary-number">
+        <span class="summary-value ${valueClass}">${value}</span>
+        <span class="summary-unit">${unitLabel}</span>
+      </div>
+      <div class="summary-sub">${sub}</div>
+    </div>`;
+}
+
+// colorize が true のとき、増えたら黄緑・減ったら赤で表示する
 function renderGraphSummary(points, values, label, colorize) {
   const first = values[0];
   const last = values[values.length - 1];
@@ -1938,34 +1960,24 @@ function renderGraphSummary(points, values, label, colorize) {
   const diff = Math.round((last - first) * 100) / 100;
 
   let diffClass = "";
-  let diffText = `${diff}${label}`;
+  let diffText = String(diff);
   if (diff > 0) {
-    diffText = `+${diff}${label}`;
+    diffText = "+" + diff;
     if (colorize) diffClass = "summary-up";
   } else if (diff < 0) {
     if (colorize) diffClass = "summary-down";
   }
 
-  graphSummary.innerHTML = `
-    <div>
-      <div class="summary-label">最初</div>
-      <div class="summary-value">${first}${label}</div>
-      <div class="summary-sub">${formatShortDate(points[0].date)}</div>
-    </div>
-    <div>
-      <div class="summary-label">最新</div>
-      <div class="summary-value">${last}${label}</div>
-      <div class="summary-sub">${formatShortDate(points[points.length - 1].date)}</div>
-    </div>
-    <div>
-      <div class="summary-label">期間中の変化</div>
-      <div class="summary-value ${diffClass}">${diffText}</div>
-    </div>
-    <div>
-      <div class="summary-label">期間中の最高</div>
-      <div class="summary-value">${max}${label}</div>
-      <div class="summary-sub">${formatShortDate(points[maxIndex].date)}</div>
-    </div>`;
+  const firstDate = formatShortDate(points[0].date);
+  const lastDate = formatShortDate(points[points.length - 1].date);
+  const maxDate = formatShortDate(points[maxIndex].date);
+
+  graphSummary.innerHTML =
+    summaryTileHtml("最新", last, label, lastDate) +
+    summaryTileHtml("期間中の変化", diffText, label, "最初との差", diffClass) +
+    summaryTileHtml("最初", first, label, firstDate) +
+    summaryTileHtml("期間中の最高", max, label, maxDate);
+
   graphSummary.hidden = false;
 }
 

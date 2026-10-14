@@ -116,7 +116,13 @@
         <div id="cal-grid" class="cal-grid"></div>
 
         <div class="cal-footer">
-          <span id="cal-summary"></span>
+          <div>
+            <div id="cal-summary-label" class="cal-summary-label"></div>
+            <div class="cal-summary-number">
+              <span id="cal-summary" class="cal-summary-value"></span>
+              <span class="cal-summary-unit">日</span>
+            </div>
+          </div>
           <button type="button" id="cal-today" class="btn-small">今日</button>
         </div>
 
@@ -147,13 +153,17 @@
       </div>
 
       <div class="card">
+        <div class="graph-heading">
+          <span id="graph-title" class="graph-title"></span>
+          <span id="graph-subtitle" class="graph-subtitle"></span>
+        </div>
         <div id="chart-wrap" class="chart-wrap">
           <canvas id="graph-canvas"></canvas>
         </div>
         <p id="graph-empty" class="empty" hidden></p>
       </div>
 
-      <div id="graph-summary" class="card graph-summary" hidden></div>
+      <div id="graph-summary" class="graph-summary" hidden></div>
     </section>
 
     <section id="view-settings" class="view">
