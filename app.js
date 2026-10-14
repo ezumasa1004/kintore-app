@@ -2294,6 +2294,11 @@ splash.addEventListener("animationend", (event) => {
 // 念のため、アニメーションの終わりが伝わらなかったときも1.5秒後には取り除く
 setTimeout(removeSplash, 1500);
 
+// ===== 拡大・縮小を止める =====
+// iPhoneで2本指を使った拡大・縮小が始まったら、それを取り消す（Safari専用の出来事）
+document.addEventListener("gesturestart", (event) => event.preventDefault());
+document.addEventListener("gesturechange", (event) => event.preventDefault());
+
 // ===== 起動時の処理 =====
 recordDate.value = toDateString(new Date());
 renderPartOptions();
