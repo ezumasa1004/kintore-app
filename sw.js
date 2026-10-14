@@ -1,6 +1,6 @@
 // ===== キャッシュの名前（＝アプリのバージョン） =====
 // ⚠️ アプリを更新するときは、必ずこの数字を増やす（v1 → v2 → v3 …）
-const CACHE_NAME = "kintore-v16";
+const CACHE_NAME = "kintore-v18";
 
 // オフラインでも使えるように保存しておくファイル
 const FILES = [
@@ -10,6 +10,7 @@ const FILES = [
   "./app.js",
   "./manifest.json",
   "./lib/chart.umd.js",
+  "./lib/jszip.min.js",   // ← 追加
   "./icons/icon-180.png",
 ];
 

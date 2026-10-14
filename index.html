@@ -15,6 +15,7 @@
   <meta name="apple-mobile-web-app-title" content="筋トレ記録">
   <link rel="stylesheet" href="style.css">
   <script src="lib/chart.umd.js" defer></script>
+  <script src="lib/jszip.min.js" defer></script>
   <script src="app.js" defer></script>
 </head>
 
@@ -99,6 +100,7 @@
       <h2 class="section-title section-gap">写真</h2>
       <div class="card">
         <div class="photo-buttons">
+          <button type="button" id="photo-camera" class="btn btn-primary">カメラで撮る</button>
           <button type="button" id="photo-pick" class="btn btn-secondary">写真から選ぶ</button>
         </div>
         <input type="file" id="photo-input" accept="image/*" multiple hidden>
@@ -260,6 +262,17 @@
       <p class="settings-footnote">
         書き出したファイルは「ファイル」アプリやGoogleドライブなどに保存してください。読み込むと、今のデータはすべて置き換わります。
       </p>
+      <!-- 写真 -->
+      <div class="settings-caption">写真</div>
+      <div class="card settings-group">
+        <button type="button" id="photo-export-button" class="settings-row settings-action">写真を書き出す</button>
+        <button type="button" id="photo-import-button" class="settings-row settings-action">写真を読み込む</button>
+      </div>
+      <input type="file" id="photo-import-input" accept=".zip,application/zip" hidden>
+      <p id="photo-summary" class="settings-footnote"></p>
+      <p class="settings-footnote">
+        写真は、記録とは別に書き出します（ZIPファイル1つにまとまります）。読み込んでも、今ある写真は消えません。
+      </p>
     </section>
   </main>
 
@@ -314,6 +327,30 @@
       <button type="button" id="viewer-prev" class="btn-icon">‹</button>
       <button type="button" id="viewer-delete" class="btn-small btn-danger">削除</button>
       <button type="button" id="viewer-next" class="btn-icon">›</button>
+    </div>
+  </div>
+
+  <!-- カメラ（アプリの中のカメラ） -->
+  <div id="camera" class="camera" role="dialog" aria-label="カメラ">
+    <video id="camera-video" class="camera-video" autoplay playsinline muted></video>
+    <div id="camera-countdown" class="camera-countdown" hidden></div>
+    <div id="camera-flash" class="camera-flash"></div>
+
+    <div class="camera-top">
+      <span id="camera-saved" class="camera-saved"></span>
+      <button type="button" id="camera-close" class="sheet-close" aria-label="閉じる">×</button>
+    </div>
+
+    <div class="camera-bottom">
+      <div></div>
+      <button type="button" id="camera-shutter" class="camera-shutter" aria-label="撮影する"></button>
+      <button type="button" id="camera-switch" class="camera-switch" aria-label="カメラを切り替える">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+          stroke-linejoin="round">
+          <path d="M20 11a8 8 0 0 0-14.9-4M4 13a8 8 0 0 0 14.9 4" />
+          <path d="M5 3v4h4M19 21v-4h-4" />
+        </svg>
+      </button>
     </div>
   </div>
 

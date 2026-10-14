@@ -287,6 +287,7 @@ function refreshAll() {
   renderCalendar();
   renderSettings();
   renderGymSettings();
+  renderPhotoSummary();
 }
 
 // ===== タブ切り替え =====
@@ -2343,6 +2344,21 @@ async function deletePhoto(id) {
   await requestToPromise(store.delete(id));
 }
 
+// すべての写真を取り出す
+async function getAllPhotos() {
+  const db = await openPhotoDb();
+  const store = db.transaction(PHOTO_STORE, "readonly").objectStore(PHOTO_STORE);
+  return requestToPromise(store.getAll());
+}
+
+// そのIDの写真がすでにあるか
+async function hasPhoto(id) {
+  const db = await openPhotoDb();
+  const store = db.transaction(PHOTO_STORE, "readonly").objectStore(PHOTO_STORE);
+  const photo = await requestToPromise(store.get(id));
+  return photo !== undefined;
+}
+
 // iPhoneに「このアプリのデータを消さないで」とお願いする
 async function requestPersistentStorage() {
   if (navigator.storage && navigator.storage.persist) {
@@ -2371,20 +2387,26 @@ function loadImage(file) {
   });
 }
 
-async function compressImage(file) {
-  const img = await loadImage(file);
-
+// 画像や映像を、長い辺が PHOTO_MAX_SIZE のJPEGにする
+// source：<img> か <video>、mirror：true なら左右反転して保存する
+function drawToJpeg(source, sourceWidth, sourceHeight, mirror) {
   // 長い辺が PHOTO_MAX_SIZE になるように縮める（もともと小さければそのまま）
-  const longSide = Math.max(img.naturalWidth, img.naturalHeight);
+  const longSide = Math.max(sourceWidth, sourceHeight);
   const scale = Math.min(1, PHOTO_MAX_SIZE / longSide);
-  const width = Math.round(img.naturalWidth * scale);
-  const height = Math.round(img.naturalHeight * scale);
+  const width = Math.round(sourceWidth * scale);
+  const height = Math.round(sourceHeight * scale);
 
-  // キャンバスに小さく描き直して、JPEGにする
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
-  canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+  const ctx = canvas.getContext("2d");
+
+  if (mirror) {
+    // キャンバスの向きを左右反転させてから描く
+    ctx.translate(width, 0);
+    ctx.scale(-1, 1);
+  }
+  ctx.drawImage(source, 0, 0, width, height);
 
   return new Promise((resolve, reject) => {
     canvas.toBlob(
@@ -2393,6 +2415,12 @@ async function compressImage(file) {
       PHOTO_QUALITY
     );
   });
+}
+
+// 写真アプリから選んだ写真を、小さくする
+async function compressImage(file) {
+  const img = await loadImage(file);
+  return drawToJpeg(img, img.naturalWidth, img.naturalHeight, false);
 }
 
 // --- 写真を表示するためのURL ---
@@ -2523,6 +2551,8 @@ calDetail.addEventListener("click", (event) => {
 function refreshPhotoViews() {
   renderRecordPhotos();
   renderCalendarPhotos();
+  renderPhotoSummary();
+  resetPhotoExport(); // 写真が変わったら、準備済みのZIPファイルは古くなるので作り直す
 }
 
 // --- 全画面表示 ---
@@ -2597,6 +2627,343 @@ viewerDelete.addEventListener("click", async () => {
   }
 
   refreshPhotoViews();
+});
+
+// ===== カメラ =====
+const CAMERA_COUNTDOWN = 3; // カウントダウンの秒数
+
+const photoCamera = document.querySelector("#photo-camera");
+const camera = document.querySelector("#camera");
+const cameraVideo = document.querySelector("#camera-video");
+const cameraCountdown = document.querySelector("#camera-countdown");
+const cameraFlash = document.querySelector("#camera-flash");
+const cameraSaved = document.querySelector("#camera-saved");
+const cameraClose = document.querySelector("#camera-close");
+const cameraShutter = document.querySelector("#camera-shutter");
+const cameraSwitch = document.querySelector("#camera-switch");
+
+let cameraStream = null;    // カメラの映像の流れ
+let cameraFacing = "user";  // "user"：前のカメラ、"environment"：後ろのカメラ
+let cameraOpen = false;     // カメラの画面を開いているか
+let cameraSavedCount = 0;   // 今回カメラを開いてから保存した枚数
+
+// 指定した時間だけ待つ
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// アニメーションを、最初からもう一度再生する
+function replayAnimation(element, className) {
+  element.classList.remove(className);
+  void element.offsetWidth; // ブラウザに一度画面を計算させる（これがないと再生し直されない）
+  element.classList.add(className);
+}
+
+// --- カメラの映像を始める・止める ---
+async function startCameraStream() {
+  stopCameraStream();
+
+  cameraStream = await navigator.mediaDevices.getUserMedia({
+    video: {
+      facingMode: cameraFacing,
+      width: { ideal: 1920 },
+      height: { ideal: 1920 },
+    },
+    audio: false,
+  });
+
+  cameraVideo.srcObject = cameraStream;
+  cameraVideo.classList.toggle("mirror", cameraFacing === "user");
+  await cameraVideo.play();
+}
+
+function stopCameraStream() {
+  if (cameraStream !== null) {
+    for (const track of cameraStream.getTracks()) {
+      track.stop(); // カメラを止める（iPhoneの画面の上の緑の点も消える）
+    }
+    cameraStream = null;
+  }
+  cameraVideo.srcObject = null;
+}
+
+function cameraErrorMessage(error) {
+  if (error.name === "NotAllowedError") {
+    return "カメラの使用が許可されていません。もう一度開いて「許可」を選んでください。";
+  }
+  if (error.name === "NotFoundError") {
+    return "使えるカメラが見つかりませんでした。";
+  }
+  return "カメラを起動できませんでした：" + error.message;
+}
+
+// --- カメラの画面を開く・閉じる ---
+async function openCamera() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    alert("この端末ではカメラを使えません。");
+    return;
+  }
+
+  cameraFacing = "user"; // いつも前のカメラから
+  cameraSavedCount = 0;
+  cameraSaved.textContent = "";
+  cameraOpen = true;
+  camera.classList.add("open");
+  document.body.style.overflow = "hidden";
+
+  try {
+    await startCameraStream();
+  } catch (error) {
+    console.error(error);
+    closeCamera();
+    alert(cameraErrorMessage(error));
+  }
+}
+
+function closeCamera() {
+  cameraOpen = false;
+  stopCameraStream();
+  camera.classList.remove("open");
+  document.body.style.overflow = "";
+  cameraCountdown.hidden = true;
+  cameraShutter.disabled = false;
+  cameraSwitch.disabled = false;
+
+  if (cameraSavedCount > 0) refreshPhotoViews(); // 撮った写真を一覧に表示する
+}
+
+// --- カウントダウン（途中で閉じられたら false を返す） ---
+async function runCountdown() {
+  cameraCountdown.hidden = false;
+
+  for (let n = CAMERA_COUNTDOWN; n >= 1; n--) {
+    if (!cameraOpen) return false;
+    cameraCountdown.textContent = n;
+    replayAnimation(cameraCountdown, "tick");
+    await sleep(1000);
+  }
+
+  cameraCountdown.hidden = true;
+  return cameraOpen;
+}
+
+// --- 今の映像を1枚の写真にする ---
+async function captureFrame() {
+  const width = cameraVideo.videoWidth;
+  const height = cameraVideo.videoHeight;
+  if (width === 0 || height === 0) {
+    throw new Error("カメラの映像がまだ準備できていません");
+  }
+  return drawToJpeg(cameraVideo, width, height, cameraFacing === "user");
+}
+
+// --- ボタン ---
+photoCamera.addEventListener("click", openCamera);
+cameraClose.addEventListener("click", closeCamera);
+
+cameraShutter.addEventListener("click", async () => {
+  cameraShutter.disabled = true;
+  cameraSwitch.disabled = true;
+  const date = recordDate.value;
+
+  const finished = await runCountdown();
+
+  if (finished) {
+    try {
+      const blob = await captureFrame();
+      await addPhoto({ id: createId(), date: date, blob: blob, createdAt: Date.now() });
+      requestPersistentStorage();
+
+      cameraSavedCount++;
+      cameraSaved.textContent = `${cameraSavedCount}枚 保存しました`;
+      replayAnimation(cameraFlash, "on");
+    } catch (error) {
+      console.error(error);
+      alert("写真を保存できませんでした：" + error.message);
+    }
+  }
+
+  cameraShutter.disabled = false;
+  cameraSwitch.disabled = false;
+});
+
+cameraSwitch.addEventListener("click", async () => {
+  cameraFacing = cameraFacing === "user" ? "environment" : "user";
+  try {
+    await startCameraStream();
+  } catch (error) {
+    console.error(error);
+    alert(cameraErrorMessage(error));
+  }
+});
+
+// 別のアプリに切り替えたら、カメラを閉じる（電池の節約と、カメラの消し忘れ防止）
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden" && cameraOpen) closeCamera();
+});
+
+// ===== 写真のバックアップ =====
+const photoExportButton = document.querySelector("#photo-export-button");
+const photoImportButton = document.querySelector("#photo-import-button");
+const photoImportInput = document.querySelector("#photo-import-input");
+const photoSummary = document.querySelector("#photo-summary");
+
+let preparedPhotoZip = null; // 準備ができたZIPファイル（まだなければ null）
+
+// 写真のファイル名に、日付・撮った時刻・IDを入れておく
+// 例：kintore_2026-10-15_1760500000000_lx3k9abc.jpg
+function photoFileName(photo) {
+  return `kintore_${photo.date}_${photo.createdAt}_${photo.id}.jpg`;
+}
+
+// ファイル名から、日付・撮った時刻・IDを取り出す（このアプリの写真でなければ null）
+function parsePhotoFileName(name) {
+  const match = name.match(/^kintore_(\d{4}-\d{2}-\d{2})_(\d+)_([0-9a-z]+)\.jpe?g$/i);
+  if (match === null) return null;
+  return { date: match[1], createdAt: Number(match[2]), id: match[3] };
+}
+
+// バイト数をMBにする（例：7340032 → "7.0"）
+function formatMB(bytes) {
+  return (bytes / 1024 / 1024).toFixed(1);
+}
+
+// 設定タブの「写真 36枚（約7.2MB）」
+async function renderPhotoSummary() {
+  try {
+    const photos = await getAllPhotos();
+    const bytes = photos.reduce((sum, p) => sum + p.blob.size, 0);
+    photoSummary.textContent = `写真 ${photos.length}枚（約${formatMB(bytes)}MB）`;
+  } catch (error) {
+    console.error(error);
+    photoSummary.textContent = "";
+  }
+}
+
+// --- 書き出し ---
+function resetPhotoExport() {
+  preparedPhotoZip = null;
+  photoExportButton.textContent = "写真を書き出す";
+}
+
+// すべての写真を、ZIPファイル1つにまとめる
+async function preparePhotoZip() {
+  const photos = await getAllPhotos();
+  if (photos.length === 0) {
+    alert("書き出す写真がありません。");
+    return null;
+  }
+
+  const zip = new JSZip();
+  for (const photo of photos) {
+    zip.file(photoFileName(photo), photo.blob);
+  }
+
+  // JPEGはもう圧縮されているので、ZIPではそれ以上圧縮しない（STORE）
+  const blob = await zip.generateAsync({ type: "blob", compression: "STORE" });
+  const fileName = `kintore-photos-${toDateString(new Date())}.zip`;
+  return new File([blob], fileName, { type: "application/zip" });
+}
+
+// ZIPファイルを保存する（iPhoneは共有の画面、PCはダウンロード）
+// 保存できたら true、共有の画面でキャンセルしたら false
+async function savePhotoZip(file) {
+  const isIPhone = /iPhone|iPad|iPod/.test(navigator.userAgent);
+
+  if (isIPhone && navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file] });
+      return true;
+    } catch (error) {
+      if (error.name === "AbortError") return false;
+      console.error("共有に失敗したので、ダウンロードに切り替えます", error);
+    }
+  }
+
+  downloadFile(file);
+  return true;
+}
+
+photoExportButton.addEventListener("click", async () => {
+  // 2回目：準備ができたファイルを保存する
+  if (preparedPhotoZip !== null) {
+    const saved = await savePhotoZip(preparedPhotoZip);
+    if (saved) resetPhotoExport(); // キャンセルしたときは、準備したファイルを残しておく
+    return;
+  }
+
+  // 1回目：ZIPファイルを準備する
+  photoExportButton.disabled = true;
+  photoExportButton.textContent = "準備中…";
+
+  try {
+    const file = await preparePhotoZip();
+    if (file === null) {
+      resetPhotoExport();
+      return;
+    }
+    preparedPhotoZip = file;
+    photoExportButton.textContent = `準備ができました。押して保存（約${formatMB(file.size)}MB）`;
+  } catch (error) {
+    console.error(error);
+    alert("写真を書き出せませんでした：" + error.message);
+    resetPhotoExport();
+  } finally {
+    photoExportButton.disabled = false;
+  }
+});
+
+// --- 読み込み ---
+photoImportButton.addEventListener("click", () => photoImportInput.click());
+
+photoImportInput.addEventListener("change", async () => {
+  const file = photoImportInput.files[0];
+  photoImportInput.value = ""; // 同じファイルをもう一度選べるようにする
+  if (file === undefined) return;
+
+  photoImportButton.disabled = true;
+  photoImportButton.textContent = "読み込み中…";
+
+  let added = 0;   // 追加した枚数
+  let skipped = 0; // すでにあったので飛ばした枚数
+  let invalid = 0; // このアプリの写真ではなかったファイルの数
+
+  try {
+    const zip = await JSZip.loadAsync(file);
+    const entries = Object.values(zip.files).filter((entry) => !entry.dir);
+
+    for (const entry of entries) {
+      const name = entry.name.split("/").pop(); // フォルダの名前を除いた、ファイル名だけ
+      const info = parsePhotoFileName(name);
+      if (info === null) {
+        invalid++;
+        continue;
+      }
+      if (await hasPhoto(info.id)) {
+        skipped++;
+        continue;
+      }
+
+      const data = await entry.async("blob");
+      const blob = new Blob([data], { type: "image/jpeg" });
+      await addPhoto({ id: info.id, date: info.date, blob: blob, createdAt: info.createdAt });
+      added++;
+    }
+
+    requestPersistentStorage();
+
+    let message = `${added}枚の写真を読み込みました。`;
+    if (skipped > 0) message += `\n${skipped}枚は、すでにあるので飛ばしました。`;
+    if (invalid > 0) message += `\n${invalid}個のファイルは、このアプリの写真ではないので飛ばしました。`;
+    alert(message);
+  } catch (error) {
+    console.error(error);
+    alert("写真を読み込めませんでした。このアプリで書き出したZIPファイルを選んでください。");
+  } finally {
+    photoImportButton.disabled = false;
+    photoImportButton.textContent = "写真を読み込む";
+    refreshPhotoViews();
+  }
 });
 
 // ===== 起動画面 =====
