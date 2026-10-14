@@ -284,6 +284,7 @@ function refreshAll() {
   renderExerciseList();
   renderExerciseSelect();
   renderRecordList();
+  renderLastDone();
   renderCalendar();
   renderSettings();
   renderGymSettings();
