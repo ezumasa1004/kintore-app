@@ -1923,6 +1923,8 @@ const BODY_METRICS = [
 
 const graphExercise = document.querySelector("#graph-exercise");
 const graphMetric = document.querySelector("#graph-metric");
+const graphExerciseName = document.querySelector("#graph-exercise-name");
+const graphExerciseDot = document.querySelector("#graph-exercise-dot");
 const graphPeriods = document.querySelector("#graph-periods");
 const chartWrap = document.querySelector("#chart-wrap");
 const graphCanvas = document.querySelector("#graph-canvas");
@@ -1965,7 +1967,36 @@ function metricUnitLabel(metric) {
   return metric.unit === "weight" ? unit() : metric.unit;
 }
 
-// 種目・指標の選択欄と、期間ボタンの表示を整える
+// 種目の一覧に並べる項目（からだ ＋ 部位ごとの、記録がある種目）
+function graphExerciseGroups() {
+  const recordedIds = new Set(data.records.map((r) => r.exerciseId));
+  const groups = [];
+
+  if (data.bodyWeights.length > 0) {
+    groups.push({
+      label: "からだ",
+      color: null,
+      items: [{ value: "body", label: "体重・体脂肪率" }],
+    });
+  }
+
+  for (const part of PARTS) {
+    const list = data.exercises.filter(
+      (ex) => ex.part === part.id && recordedIds.has(ex.id)
+    );
+    if (list.length === 0) continue;
+
+    groups.push({
+      label: part.name,
+      color: part.color,
+      items: list.map((ex) => ({ value: ex.id, label: ex.name })),
+    });
+  }
+
+  return groups;
+}
+
+// 種目のボタン・指標のボタン・期間のボタンの表示を整える
 function renderGraphControls() {
   const recordedIds = new Set(data.records.map((r) => r.exerciseId));
   const hasBody = data.bodyWeights.length > 0;
@@ -1979,36 +2010,33 @@ function renderGraphControls() {
     graphMetricId = null;
   }
 
-  // 選択欄：一番上に「体重・体脂肪率」、その下に記録がある種目
-  let html = "";
-  if (hasBody) {
-    html += `<optgroup label="からだ"><option value="body">体重・体脂肪率</option></optgroup>`;
-  }
-  for (const part of PARTS) {
-    const list = data.exercises.filter(
-      (ex) => ex.part === part.id && recordedIds.has(ex.id)
-    );
-    if (list.length === 0) continue;
-
-    html += `<optgroup label="${part.name}">`;
-    for (const ex of list) {
-      html += `<option value="${ex.id}">${escapeHtml(ex.name)}</option>`;
-    }
-    html += `</optgroup>`;
-  }
-  graphExercise.innerHTML = html;
-
+  // 期間のボタン
   graphPeriods.querySelectorAll("button").forEach((button) => {
     button.classList.toggle("active", button.dataset.period === graphPeriod);
   });
 
+  // 記録が何もないとき
   if (graphExerciseId === null) {
+    graphExercise.disabled = true;
+    graphExerciseName.textContent = "記録がまだありません";
+    graphExerciseDot.hidden = true;
     graphMetric.innerHTML = "";
     return;
   }
-  graphExercise.value = graphExerciseId;
+  graphExercise.disabled = false;
 
-  // 指標の選択欄（体重か、種目の種類かで変わる）
+  // 種目のボタン（部位の色の点と名前）
+  if (graphExerciseId === "body") {
+    graphExerciseName.textContent = "体重・体脂肪率";
+    graphExerciseDot.hidden = true;
+  } else {
+    const ex = getExercise(graphExerciseId);
+    graphExerciseName.textContent = ex.name;
+    graphExerciseDot.style.background = getPart(ex.part).color;
+    graphExerciseDot.hidden = false;
+  }
+
+  // 指標のボタン（種類によって変わる）
   const metrics = graphExerciseId === "body"
     ? BODY_METRICS
     : METRICS[getExercise(graphExerciseId).type];
@@ -2016,10 +2044,13 @@ function renderGraphControls() {
   if (!metrics.some((m) => m.id === graphMetricId)) {
     graphMetricId = metrics[0].id;
   }
+
   graphMetric.innerHTML = metrics
-    .map((m) => `<option value="${m.id}">${m.name}</option>`)
+    .map((m) => `
+      <button type="button" data-metric="${m.id}" class="${m.id === graphMetricId ? "active" : ""}">
+        ${m.name}
+      </button>`)
     .join("");
-  graphMetric.value = graphMetricId;
 }
 
 // グラフの代わりにメッセージを出す
@@ -2175,14 +2206,21 @@ function renderGraphSummary(points, values, label, colorize) {
   graphSummary.hidden = false;
 }
 
-graphExercise.addEventListener("change", () => {
-  graphExerciseId = graphExercise.value;
-  graphMetricId = null; // 種類が変わるかもしれないので、指標は選び直す
-  renderGraph();
+// 種目のボタン：下から一覧を開いて選ぶ
+graphExercise.addEventListener("click", () => {
+  openChoiceSheet("種目を選ぶ", graphExerciseGroups(), graphExerciseId, (value) => {
+    graphExerciseId = value;
+    graphMetricId = null; // 種類が変わるかもしれないので、指標は選び直す
+    renderGraph();
+  });
 });
 
-graphMetric.addEventListener("change", () => {
-  graphMetricId = graphMetric.value;
+// 指標のボタン：押したものに切り替える
+graphMetric.addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-metric]");
+  if (button === null) return;
+
+  graphMetricId = button.dataset.metric;
   renderGraph();
 });
 
@@ -3269,6 +3307,66 @@ addSwipe(calGrid, calGrid, (direction) => changeMonth(direction));
 
 // 日付を選ぶポップアップ：前の月・次の月
 addSwipe(pickerGrid, pickerGrid, (direction) => changePickerMonth(direction));
+
+// ===== 選択の一覧（下から出てくるシート。どこからでも使える部品） =====
+const choiceSheet = document.querySelector("#choice-sheet");
+const choiceSheetTitle = document.querySelector("#choice-sheet-title");
+const choiceSheetList = document.querySelector("#choice-sheet-list");
+const choiceSheetClose = document.querySelector("#choice-sheet-close");
+
+let choiceSheetOnSelect = null; // 項目を選んだときに呼ぶ関数
+
+// title：一覧の見出し
+// groups：[{ label: 見出し, color: 点の色（なければ null）, items: [{ value, label }] }]
+// selected：今選んでいる項目の value（✓ を付ける）
+// onSelect(value)：項目を選んだときの処理
+function openChoiceSheet(title, groups, selected, onSelect) {
+  choiceSheetTitle.textContent = title;
+
+  let html = "";
+  for (const group of groups) {
+    const dot = group.color === null
+      ? ""
+      : `<span class="part-dot" style="background:${group.color}"></span>`;
+    html += `<div class="sheet-part">${dot}${group.label}</div>`;
+
+    html += `<div class="sheet-group">`;
+    for (const item of group.items) {
+      html += `
+        <button type="button" class="sheet-item" data-value="${item.value}">
+          <span class="sheet-name">${escapeHtml(item.label)}</span>
+          ${item.value === selected ? `<span class="sheet-check">✓</span>` : ""}
+        </button>`;
+    }
+    html += `</div>`;
+  }
+  choiceSheetList.innerHTML = html;
+
+  choiceSheetOnSelect = onSelect;
+  choiceSheet.classList.add("open");
+  document.body.style.overflow = "hidden";
+}
+
+function closeChoiceSheet() {
+  choiceSheet.classList.remove("open");
+  document.body.style.overflow = "";
+}
+
+choiceSheetClose.addEventListener("click", closeChoiceSheet);
+
+choiceSheet.addEventListener("click", (event) => {
+  // 暗い背景の部分をタップしたら閉じる
+  if (event.target === choiceSheet) {
+    closeChoiceSheet();
+    return;
+  }
+
+  const item = event.target.closest("button[data-value]");
+  if (item === null) return;
+
+  closeChoiceSheet();
+  choiceSheetOnSelect(item.dataset.value);
+});
 
 // ===== 起動画面 =====
 const splash = document.querySelector("#splash");

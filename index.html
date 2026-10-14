@@ -155,16 +155,17 @@
 
     <section id="view-graph" class="view">
       <div class="card">
-        <label class="field">
-          <span>種目</span>
-          <select id="graph-exercise"></select>
-        </label>
+        <div class="field-label">種目</div>
+        <button type="button" id="graph-exercise" class="picker-button">
+          <span id="graph-exercise-dot" class="part-dot" hidden></span>
+          <span id="graph-exercise-name" class="picker-name"></span>
+          <span class="picker-chevron">›</span>
+        </button>
 
-        <label class="field">
-          <span>指標</span>
-          <select id="graph-metric"></select>
-        </label>
+        <div class="field-label">指標</div>
+        <div id="graph-metric" class="segmented graph-metrics"></div>
 
+        <div class="field-label">期間</div>
         <div id="graph-periods" class="segmented">
           <button type="button" data-period="1m">1か月</button>
           <button type="button" data-period="3m">3か月</button>
@@ -231,7 +232,7 @@
           <span class="settings-name">デフォルトのジム</span>
           <span id="default-gym-name" class="settings-meta"></span>
           <span class="settings-chevron">›</span>
-        </button>        
+        </button>
         <button type="button" id="gym-add-row" class="settings-row settings-action">＋ ジムを登録</button>
 
         <form id="gym-form" class="settings-form" hidden>
@@ -308,6 +309,18 @@
         <button type="button" id="gym-sheet-close" class="sheet-close" aria-label="閉じる">×</button>
       </div>
       <div id="gym-sheet-list" class="sheet-group gym-sheet-list"></div>
+    </div>
+  </div>
+
+  <!-- 選択の一覧（下から出てくるシート。グラフの種目などで使う） -->
+  <div id="choice-sheet" class="sheet-backdrop">
+    <div class="sheet" role="dialog" aria-label="選ぶ">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <span id="choice-sheet-title" class="sheet-title"></span>
+        <button type="button" id="choice-sheet-close" class="sheet-close" aria-label="閉じる">×</button>
+      </div>
+      <div id="choice-sheet-list"></div>
     </div>
   </div>  
 
