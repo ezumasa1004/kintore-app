@@ -1802,3 +1802,13 @@ div.settings-row {
 .graph-metrics {
   margin-bottom: 14px;
 }
+
+/* ===== 体重・体脂肪率：見出しをカードの外に出した後の調整 ===== */
+.body-header {
+  justify-content: flex-end; /* 「✓ 保存済み」を右に寄せる */
+  margin-bottom: 0;
+}
+
+.body-card.saved .body-header {
+  margin-bottom: 4px;
+}

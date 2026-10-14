@@ -51,9 +51,32 @@
         <span id="gym-empty" class="gym-empty" hidden>ジムは設定タブで登録できます</span>
       </div>
 
+
+
+      <button type="button" id="add-exercise-button" class="btn btn-primary btn-block add-exercise">＋ 種目を追加</button>
+
+      <div id="record-editor" class="card" hidden>
+        <h3 id="editor-title" class="editor-title"></h3>
+        <div id="previous-box"></div>
+        <div id="set-list"></div>
+        <button type="button" id="add-set" class="btn btn-secondary btn-block">＋ セットを追加</button>
+
+        <label class="field">
+          <span>メモ</span>
+          <textarea id="record-memo" rows="2" placeholder="フォーム、調子など"></textarea>
+        </label>
+
+        <div class="form-buttons">
+          <button type="button" id="editor-cancel" class="btn btn-secondary">キャンセル</button>
+          <button type="button" id="editor-save" class="btn btn-primary">保存</button>
+        </div>
+      </div>
+
+      <h2 class="section-title">この日の記録</h2>
+      <div id="record-list"></div>
+      <h2 class="section-title section-gap">体重・体脂肪率</h2>
       <div id="body-card" class="card body-card">
         <div class="body-header">
-          <span class="body-title">体重・体脂肪率</span>
           <span id="body-saved-badge" class="body-saved-badge" hidden>✓ 保存済み</span>
         </div>
 
@@ -80,29 +103,7 @@
             </div>
           </div>
         </div>
-      </div>
-
-      <button type="button" id="add-exercise-button" class="btn btn-primary btn-block add-exercise">＋ 種目を追加</button>
-
-      <div id="record-editor" class="card" hidden>
-        <h3 id="editor-title" class="editor-title"></h3>
-        <div id="previous-box"></div>
-        <div id="set-list"></div>
-        <button type="button" id="add-set" class="btn btn-secondary btn-block">＋ セットを追加</button>
-
-        <label class="field">
-          <span>メモ</span>
-          <textarea id="record-memo" rows="2" placeholder="フォーム、調子など"></textarea>
-        </label>
-
-        <div class="form-buttons">
-          <button type="button" id="editor-cancel" class="btn btn-secondary">キャンセル</button>
-          <button type="button" id="editor-save" class="btn btn-primary">保存</button>
-        </div>
-      </div>
-
-      <h2 class="section-title">この日の記録</h2>
-      <div id="record-list"></div>
+      </div>      
       <h2 class="section-title section-gap">写真</h2>
       <div class="card">
         <div class="photo-buttons">
