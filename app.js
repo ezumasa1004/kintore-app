@@ -1002,11 +1002,22 @@ calDetail.addEventListener("click", (event) => {
 });
 
 // ===== 体重・体脂肪率 =====
+const bodyCard = document.querySelector("#body-card");
+const bodySavedBadge = document.querySelector("#body-saved-badge");
+const bodyInputArea = document.querySelector("#body-input-area");
+const bodySavedArea = document.querySelector("#body-saved-area");
+const bodySavedValues = document.querySelector("#body-saved-values");
+const bodyDiff = document.querySelector("#body-diff");
+const bodyEditButton = document.querySelector("#body-edit");
+const bodyDeleteButton = document.querySelector("#body-delete");
 const bodyWeightInput = document.querySelector("#body-weight");
 const bodyWeightUnit = document.querySelector("#body-weight-unit");
 const bodyFatInput = document.querySelector("#body-fat");
 const bodySave = document.querySelector("#body-save");
 const bodyStatus = document.querySelector("#body-status");
+
+// 保存済みの体重を編集している日付（編集していないときは null）
+let bodyEditDate = null;
 
 // 指定した日の体重の記録（なければ null）
 function findBodyRecord(date) {
@@ -1031,21 +1042,69 @@ function formatBody(body) {
   return text;
 }
 
+// 状態に合わせて「保存済みの表示」か「入力欄」のどちらかを出す
 function renderBodyCard() {
   const body = findBodyRecord(recordDate.value);
+  const editing = body !== null && bodyEditDate === recordDate.value;
   bodyWeightUnit.textContent = unit();
 
-  if (body !== null) {
-    // この日の記録があれば、入力欄に入れる
-    bodyWeightInput.value = formatNumber(kgToDisplay(body.weight));
-    bodyFatInput.value = body.fat === null ? "" : formatNumber(body.fat);
-    bodyStatus.innerHTML = `保存済み<button type="button" class="link-button" data-action="delete-body">削除</button>`;
+  if (body !== null && !editing) {
+    showBodySaved(body);
+  } else {
+    showBodyInput(body);
+  }
+}
+
+// --- 保存済みの表示 ---
+function showBodySaved(body) {
+  bodyCard.classList.add("saved");
+  bodySavedBadge.hidden = false;
+  bodyInputArea.hidden = true;
+  bodySavedArea.hidden = false;
+
+  // 大きな数字で表示する（体脂肪率がない日は体重だけ）
+  let html = `<span class="body-value">${formatNumber(kgToDisplay(body.weight))}<small>${unit()}</small></span>`;
+  if (body.fat !== null) {
+    html += `<span class="body-value">${formatNumber(body.fat)}<small>%</small></span>`;
+  }
+  bodySavedValues.innerHTML = html;
+
+  // 前回比
+  const previous = findPreviousBody(body.date);
+  if (previous === null) {
+    bodyDiff.textContent = "";
     return;
   }
 
-  // この日の記録がなければ、入力欄を空にして、前回の値を表示する
+  const diff = Math.round((kgToDisplay(body.weight) - kgToDisplay(previous.weight)) * 100) / 100;
+  let sign = "±";
+  if (diff > 0) sign = "+";
+  if (diff < 0) sign = "−";
+
+  bodyDiff.textContent =
+    `前回比 ${sign}${formatNumber(Math.abs(diff))}${unit()}（${formatShortDate(previous.date)}）`;
+}
+
+// --- 入力欄（新しく入力するとき、または編集中） ---
+function showBodyInput(body) {
+  bodyCard.classList.remove("saved");
+  bodySavedBadge.hidden = true;
+  bodyInputArea.hidden = false;
+  bodySavedArea.hidden = true;
+
+  if (body !== null) {
+    // 編集中：保存済みの値を入れておく
+    bodyWeightInput.value = formatNumber(kgToDisplay(body.weight));
+    bodyFatInput.value = body.fat === null ? "" : formatNumber(body.fat);
+    bodySave.textContent = "更新";
+    bodyStatus.innerHTML = `編集中<button type="button" class="link-button" data-action="cancel-body">キャンセル</button>`;
+    return;
+  }
+
+  // 新しく入力する：空にして、前回の値を参考に表示する
   bodyWeightInput.value = "";
   bodyFatInput.value = "";
+  bodySave.textContent = "保存";
 
   const previous = findPreviousBody(recordDate.value);
   bodyStatus.textContent = previous === null
@@ -1053,11 +1112,11 @@ function renderBodyCard() {
     : `前回（${formatShortDate(previous.date)}）：${formatBody(previous)}`;
 }
 
+// --- 保存・更新 ---
 bodySave.addEventListener("click", () => {
   const weight = parseNumber(bodyWeightInput.value);
   const fat = parseNumber(bodyFatInput.value);
 
-  // 入力のチェック
   if (isNaN(weight) || weight <= 0) {
     alert("体重を入力してください");
     return;
@@ -1078,16 +1137,33 @@ bodySave.addEventListener("click", () => {
     data.bodyWeights.push({ date: recordDate.value, weight: kg, fat: fatValue });
   }
 
+  bodyEditDate = null; // 保存したら、保存済みの表示に戻す
   saveData();
   refreshAll();
 });
 
+// --- 編集 ---
+bodyEditButton.addEventListener("click", () => {
+  bodyEditDate = recordDate.value;
+  renderBodyCard();
+  bodyWeightInput.focus();
+});
+
+// --- 編集のキャンセル ---
 bodyStatus.addEventListener("click", (event) => {
-  const button = event.target.closest('button[data-action="delete-body"]');
+  const button = event.target.closest('button[data-action="cancel-body"]');
   if (button === null) return;
+
+  bodyEditDate = null;
+  renderBodyCard();
+});
+
+// --- 削除 ---
+bodyDeleteButton.addEventListener("click", () => {
   if (!confirm("この日の体重の記録を削除しますか？")) return;
 
   data.bodyWeights = data.bodyWeights.filter((b) => b.date !== recordDate.value);
+  bodyEditDate = null;
   saveData();
   refreshAll();
 });

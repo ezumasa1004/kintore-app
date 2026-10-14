@@ -32,16 +32,35 @@
         <button type="button" id="date-next" class="btn-icon">›</button>
       </div>
 
-      <div class="card body-card">
-        <div class="body-title">体重・体脂肪率</div>
-        <div class="body-row">
-          <input id="body-weight" class="set-input" inputmode="decimal" placeholder="体重">
-          <span id="body-weight-unit" class="set-unit">kg</span>
-          <input id="body-fat" class="set-input" inputmode="decimal" placeholder="体脂肪率">
-          <span class="set-unit">%</span>
-          <button type="button" id="body-save" class="btn-small btn-save">保存</button>
+      <div id="body-card" class="card body-card">
+        <div class="body-header">
+          <span class="body-title">体重・体脂肪率</span>
+          <span id="body-saved-badge" class="body-saved-badge" hidden>✓ 保存済み</span>
         </div>
-        <div id="body-status" class="body-status"></div>
+
+        <!-- 入力するとき -->
+        <div id="body-input-area">
+          <div class="body-row">
+            <input id="body-weight" class="set-input" inputmode="decimal" placeholder="体重">
+            <span id="body-weight-unit" class="set-unit">kg</span>
+            <input id="body-fat" class="set-input" inputmode="decimal" placeholder="体脂肪率">
+            <span class="set-unit">%</span>
+            <button type="button" id="body-save" class="btn-small btn-save">保存</button>
+          </div>
+          <div id="body-status" class="body-status"></div>
+        </div>
+
+        <!-- 保存済みのとき -->
+        <div id="body-saved-area" hidden>
+          <div id="body-saved-values" class="body-values"></div>
+          <div class="body-saved-footer">
+            <span id="body-diff" class="body-diff"></span>
+            <div class="item-buttons">
+              <button type="button" id="body-edit" class="btn-small">編集</button>
+              <button type="button" id="body-delete" class="btn-small btn-danger">削除</button>
+            </div>
+          </div>
+        </div>
       </div>
 
       <label class="field">
