@@ -19,7 +19,7 @@ const LB_PER_KG = 2.20462; // 1kg = 2.20462lbs
 
 // ===== データの保存・読み込み =====
 const STORAGE_KEY = "kintore-app-data";
-const DATA_VERSION = 2; // データの形の版番号。形を変えたら増やす
+const DATA_VERSION = 3; // データの形の版番号。形を変えたら増やす
 
 function createDefaultData() {
   return {
@@ -51,6 +51,14 @@ function migrateData(d) {
       }
     }
     d.version = 2;
+  }
+
+  // 版2 → 版3：記録にスーパーセットの組の番号（supersetId）を追加
+  if (d.version === 2) {
+    for (const r of d.records) {
+      if (r.supersetId === undefined) r.supersetId = null;
+    }
+    d.version = 3;
   }
 
   // 足りない項目を補う
@@ -386,6 +394,7 @@ function deleteExercise(id) {
 
   data.exercises = data.exercises.filter((e) => e.id !== id);
   data.records = data.records.filter((r) => r.exerciseId !== id);
+  cleanupSupersets();
   saveData();
 
   if (editingId === id) resetExerciseForm();
@@ -578,6 +587,15 @@ function renderPreviousBox() {
         <button type="button" class="btn-small" data-action="copy-previous">コピー</button>
       </div>
       <div class="previous-sets">${setsText}</div>`;
+
+    // 前回スーパーセットだったら、相手の種目を表示する
+    const partners = supersetPartners(previous);
+    if (partners.length > 0) {
+      const names = partners
+        .map((p) => escapeHtml(getExercise(p.exerciseId).name))
+        .join("・");
+      html += `<div class="previous-ss">⚡ 前回は ${names} とスーパーセット</div>`;
+    }
   }
 
   if (best !== null) {
@@ -751,6 +769,7 @@ editorSave.addEventListener("click", () => {
       exerciseId: draft.exerciseId,
       memo: draft.memo.trim(),
       sets: sets,
+      supersetId: null,   // ← この行を追加
     });
   } else {
     const record = data.records.find((r) => r.id === draft.recordId);
@@ -764,6 +783,107 @@ editorSave.addEventListener("click", () => {
 });
 
 editorCancel.addEventListener("click", closeEditor);
+
+// --- スーパーセット ---
+const SUPERSET_COLORS = ["#af52de", "#32ade6", "#ff9500", "#34c759"]; // A, B, C, D の色
+
+// つなぐ相手を選ぶ欄を開いている記録のID（開いていなければ null）
+let supersetPickerFor = null;
+
+function getRecord(id) {
+  return data.records.find((r) => r.id === id);
+}
+
+// 同じ組の、自分以外の記録
+function supersetPartners(record) {
+  if (record.supersetId === null) return [];
+  return data.records.filter(
+    (r) => r.supersetId === record.supersetId && r.id !== record.id
+  );
+}
+
+// 2つの記録をつなぐ
+function linkSuperset(sourceId, targetId) {
+  const source = getRecord(sourceId);
+  const target = getRecord(targetId);
+
+  // どちらも組に入っていない → 新しい組を作る
+  if (source.supersetId === null && target.supersetId === null) {
+    const id = createId();
+    source.supersetId = id;
+    target.supersetId = id;
+    return;
+  }
+  // 片方だけ組に入っている → もう片方をその組に入れる
+  if (source.supersetId === null) {
+    source.supersetId = target.supersetId;
+    return;
+  }
+  if (target.supersetId === null) {
+    target.supersetId = source.supersetId;
+    return;
+  }
+  // どちらも別の組に入っている → 相手の組を、自分の組にまとめる
+  const oldId = target.supersetId;
+  for (const r of data.records) {
+    if (r.supersetId === oldId) r.supersetId = source.supersetId;
+  }
+}
+
+// 1つの記録を組から外す
+function unlinkSuperset(id) {
+  getRecord(id).supersetId = null;
+  cleanupSupersets();
+}
+
+// 1種目だけになった組をなくす
+function cleanupSupersets() {
+  const counts = {};
+  for (const r of data.records) {
+    if (r.supersetId === null) continue;
+    counts[r.supersetId] = (counts[r.supersetId] || 0) + 1;
+  }
+  for (const r of data.records) {
+    if (r.supersetId !== null && counts[r.supersetId] < 2) r.supersetId = null;
+  }
+}
+
+// つなぐ相手を選ぶ欄のHTML
+function supersetPickerHtml(record) {
+  // 同じ日の、自分と同じ組に入っていない記録が候補
+  const candidates = data.records.filter(
+    (r) =>
+      r.date === record.date &&
+      r.id !== record.id &&
+      (record.supersetId === null || r.supersetId !== record.supersetId)
+  );
+
+  let html = `
+    <div class="ss-picker">
+      <div class="ss-picker-title">つなぐ種目を選んでください</div>`;
+
+  if (candidates.length === 0) {
+    html += `<p class="ss-picker-empty">この日のほかの記録がありません</p>`;
+  }
+
+  for (const c of candidates) {
+    const ex = getExercise(c.exerciseId);
+    const part = getPart(ex.part);
+    const note = c.supersetId !== null ? `<span class="ss-note">別のスーパーセット</span>` : "";
+    html += `
+      <button type="button" class="ss-option" data-action="ss-link"
+        data-id="${record.id}" data-target="${c.id}">
+        <span class="part-dot" style="background:${part.color}"></span>
+        ${escapeHtml(ex.name)}
+        ${note}
+      </button>`;
+  }
+
+  html += `
+      <button type="button" class="btn-small" data-action="ss-close">キャンセル</button>
+    </div>`;
+  return html;
+}
 
 // 記録カード1枚分のHTML。showButtons が true のときだけ編集・削除ボタンを付ける
 function recordCardHtml(record, showButtons) {
@@ -799,6 +919,23 @@ function recordCardHtml(record, showButtons) {
        </div>`
     : "";
 
+  // スーパーセットのボタン（記録画面のときだけ）
+  let supersetHtml = "";
+  if (showButtons) {
+    const inGroup = record.supersetId !== null;
+    supersetHtml = `
+      <div class="ss-actions">
+        <button class="btn-small" data-action="ss-open" data-id="${record.id}">
+          ${inGroup ? "⚡ 種目を追加" : "⚡ スーパーセット"}
+        </button>
+        ${inGroup ? `<button class="btn-small" data-action="ss-remove" data-id="${record.id}">解除</button>` : ""}
+      </div>`;
+
+    if (supersetPickerFor === record.id) {
+      supersetHtml += supersetPickerHtml(record);
+    }
+  }
+
   return `
     <div class="card record-card">
       <div class="record-head">
@@ -810,12 +947,14 @@ function recordCardHtml(record, showButtons) {
       <ul class="record-sets">${setsHtml}</ul>
       ${oneRmHtml}
       ${memoHtml}
+      ${supersetHtml}
     </div>`;
 }
 
 function renderRecordList() {
   renderBodyCard(); // 日付が変わったときに、体重の欄も更新する
   renderDateLabel();
+
   const records = data.records.filter((r) => r.date === recordDate.value);
 
   if (records.length === 0) {
@@ -823,26 +962,98 @@ function renderRecordList() {
     return;
   }
 
-  recordList.innerHTML = records.map((r) => recordCardHtml(r, true)).join("");
+  // スーパーセットごとにまとめる（組の並び順は、その組の最初の記録の位置）
+  const groups = [];      // 例：[ [ベンチ, ロウ], [スクワット], [カール, プレスダウン] ]
+  const groupById = {};   // 組の番号 → その組の配列
+  for (const r of records) {
+    if (r.supersetId === null) {
+      groups.push([r]);
+      continue;
+    }
+    if (groupById[r.supersetId] === undefined) {
+      groupById[r.supersetId] = [];
+      groups.push(groupById[r.supersetId]);
+    }
+    groupById[r.supersetId].push(r);
+  }
+
+  let html = "";
+  let supersetCount = 0;
+
+  for (const group of groups) {
+    const cards = group.map((r) => recordCardHtml(r, true)).join("");
+
+    if (group[0].supersetId === null) {
+      html += cards; // スーパーセットでない記録は、そのまま
+      continue;
+    }
+
+    const letter = String.fromCharCode(65 + supersetCount); // 65 は "A" の文字番号
+    const color = SUPERSET_COLORS[supersetCount % SUPERSET_COLORS.length];
+    supersetCount++;
+
+    html += `
+      <div class="ss-group" style="--ss-color:${color}">
+        <div class="ss-label">⚡ スーパーセット ${letter}</div>
+        ${cards}
+      </div>`;
+  }
+
+  recordList.innerHTML = html;
 }
 
 recordList.addEventListener("click", (event) => {
   const button = event.target.closest("button[data-action]");
   if (button === null) return;
 
-  const record = data.records.find((r) => r.id === button.dataset.id);
+  const action = button.dataset.action;
+  const record = getRecord(button.dataset.id);
 
-  if (button.dataset.action === "edit") {
+  // 編集
+  if (action === "edit") {
     openEditor(record.exerciseId);
+    return;
   }
 
-  if (button.dataset.action === "delete") {
+  // 削除
+  if (action === "delete") {
     const name = getExercise(record.exerciseId).name;
     if (!confirm(`「${name}」の記録を削除しますか？`)) return;
 
     data.records = data.records.filter((r) => r.id !== record.id);
+    cleanupSupersets(); // 組が1種目だけになったら、組をなくす
     saveData();
     if (draft !== null && draft.recordId === record.id) closeEditor();
+    refreshAll();
+    return;
+  }
+
+  // つなぐ相手を選ぶ欄を開く／閉じる
+  if (action === "ss-open") {
+    supersetPickerFor = record.id;
+    renderRecordList();
+    return;
+  }
+  if (action === "ss-close") {
+    supersetPickerFor = null;
+    renderRecordList();
+    return;
+  }
+
+  // 相手を選んでつなぐ
+  if (action === "ss-link") {
+    linkSuperset(record.id, button.dataset.target);
+    supersetPickerFor = null;
+    saveData();
+    refreshAll();
+    return;
+  }
+
+  // 組から外す
+  if (action === "ss-remove") {
+    if (!confirm("この種目をスーパーセットから外しますか？")) return;
+    unlinkSuperset(record.id);
+    saveData();
     refreshAll();
   }
 });
