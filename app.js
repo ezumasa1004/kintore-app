@@ -340,6 +340,7 @@ const views = document.querySelectorAll(".view");
 const pageTitle = document.querySelector("#page-title");
 
 function showView(name) {
+  closeKeypad();   
   views.forEach((view) => view.classList.remove("active"));
   tabs.forEach((tab) => tab.classList.remove("active"));
 
@@ -743,6 +744,7 @@ function openEditor(exerciseId) {
 }
 
 function closeEditor() {
+  closeKeypad();  
   draft = null;
   recordEditor.hidden = true;
   renderRecordList(); // 入力画面を元の場所に戻し、カードを表示し直す
@@ -821,8 +823,8 @@ function setRowHtml(set, i, type, label) {
 
   if (type === "time") {
     inputs = `
-      <input class="set-input" inputmode="numeric" placeholder="0"
-        data-index="${i}" data-field="seconds" value="${escapeHtml(set.seconds)}">
+      <input class="set-input keypad-input" inputmode="none" readonly data-keypad="integer"
+        placeholder="0" data-index="${i}" data-field="seconds" value="${escapeHtml(set.seconds)}">
       <span class="set-unit">秒</span>`;
   } else {
     if (type === "bodyweight") {
@@ -834,12 +836,12 @@ function setRowHtml(set, i, type, label) {
         </select>`;
     }
     inputs += `
-      <input class="set-input" inputmode="decimal" placeholder="0"
-        data-index="${i}" data-field="weight" value="${escapeHtml(set.weight)}">
+      <input class="set-input keypad-input" inputmode="none" readonly data-keypad="decimal"
+        placeholder="0" data-index="${i}" data-field="weight" value="${escapeHtml(set.weight)}">
       <span class="set-unit">${unit()}</span>
       <span class="set-x">×</span>
-      <input class="set-input" inputmode="numeric" placeholder="0"
-        data-index="${i}" data-field="reps" value="${escapeHtml(set.reps)}">
+      <input class="set-input keypad-input" inputmode="none" readonly data-keypad="integer"
+        placeholder="0" data-index="${i}" data-field="reps" value="${escapeHtml(set.reps)}">
       <span class="set-unit">回</span>`;
   }
 
@@ -3553,6 +3555,135 @@ choiceSheet.addEventListener("click", (event) => {
   closeChoiceSheet();
   choiceSheetOnSelect(item.dataset.value);
 });
+
+// ===== テンキー（数字の入力欄用の、アプリのキーボード） =====
+const keypad = document.querySelector("#keypad");
+const keypadExtra = document.querySelector("#keypad-extra");
+const keypadDot = keypad.querySelector('[data-key="."]');
+
+const KEYPAD_MAX_LENGTH = 7; // 入力できる文字数の上限
+
+let keypadTarget = null;   // 今テンキーで入力している欄（閉じているときは null）
+let keypadReplace = false; // 次に数字を押したとき、今の値を置き換えるか
+
+// テンキーを開く（すでに開いていれば、入力する欄を切り替える）
+function openKeypad(input) {
+  if (keypadTarget !== null) {
+    keypadTarget.classList.remove("keypad-active", "keypad-replace");
+  }
+
+  keypadTarget = input;
+  keypadReplace = input.value !== ""; // 数字が入っていれば「選択された状態」から始める
+  input.classList.add("keypad-active");
+  input.classList.toggle("keypad-replace", keypadReplace);
+
+  // 小数点は「decimal」の欄だけ、「−1」「＋1」は回数の欄だけ
+  keypadDot.disabled = input.dataset.keypad !== "decimal";
+  keypadExtra.hidden = input.dataset.field !== "reps";
+
+  keypad.classList.add("open");
+  document.body.classList.add("keypad-open");
+  input.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+function closeKeypad() {
+  if (keypadTarget !== null) {
+    keypadTarget.classList.remove("keypad-active", "keypad-replace");
+  }
+  keypadTarget = null;
+  keypadReplace = false;
+  keypad.classList.remove("open");
+  document.body.classList.remove("keypad-open");
+}
+
+// 欄に値を入れて、「入力された」ことを知らせる（セットの下書きに書き写すため）
+function setKeypadValue(value) {
+  keypadTarget.value = value;
+  keypadTarget.classList.remove("keypad-replace");
+  keypadTarget.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+// 「次へ」：同じ範囲（data-keypad-scope）の中の、次の欄に移る。なければ閉じる
+function moveToNextInput() {
+  const scope = keypadTarget.closest("[data-keypad-scope]");
+  const inputs = scope === null ? [] : Array.from(scope.querySelectorAll(".keypad-input"));
+  const next = inputs[inputs.indexOf(keypadTarget) + 1];
+
+  if (next === undefined) {
+    closeKeypad();
+  } else {
+    openKeypad(next);
+  }
+}
+
+function pressKey(key) {
+  // 入力していた欄が、描き直しなどでなくなっていたら閉じる
+  if (keypadTarget === null || !keypadTarget.isConnected) {
+    closeKeypad();
+    return;
+  }
+
+  if (key === "done") {
+    closeKeypad();
+    return;
+  }
+  if (key === "next") {
+    moveToNextInput();
+    return;
+  }
+
+  let value = keypadTarget.value;
+
+  if (key === "plus" || key === "minus") {
+    // 回数を1つ増やす・減らす（0より下にはしない）
+    const n = parseInt(value, 10) || 0;
+    value = String(Math.max(0, n + (key === "plus" ? 1 : -1)));
+  } else if (key === "back") {
+    // 選択された状態なら全部消す。そうでなければ1文字消す
+    value = keypadReplace ? "" : value.slice(0, -1);
+  } else {
+    // 数字か小数点
+    if (keypadReplace) value = "";
+
+    if (key === ".") {
+      if (keypadTarget.dataset.keypad !== "decimal" || value.includes(".")) return;
+      if (value === "") value = "0"; // 「.5」ではなく「0.5」にする
+    }
+    if (value.length >= KEYPAD_MAX_LENGTH) return;
+    if (value === "0" && key !== ".") value = ""; // 「05」のように0が先頭に付かないようにする
+
+    value += key;
+  }
+
+  keypadReplace = false;
+  setKeypadValue(value);
+}
+
+// テンキーのボタン
+keypad.addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-key]");
+  if (button === null) return;
+  pressKey(button.dataset.key);
+});
+
+// テンキーで入力する欄を押したとき、カーソルや選択が出ないようにする
+document.addEventListener("pointerdown", (event) => {
+  if (event.target.closest(".keypad-input") !== null) event.preventDefault();
+});
+
+// 欄を押したら開く・テンキーの外を押したら閉じる
+document.addEventListener("click", (event) => {
+  const input = event.target.closest(".keypad-input");
+  if (input !== null) {
+    openKeypad(input);
+    return;
+  }
+
+  if (keypadTarget === null) return;
+  if (event.target.closest("#keypad") !== null) return; // テンキーの中なら何もしない
+  closeKeypad();
+});
+
 // ===== 起動画面 =====
 const splash = document.querySelector("#splash");
 

@@ -1867,3 +1867,95 @@ div.settings-row {
 .update-notes li + li {
   margin-top: 6px;
 }
+
+/* ===== テンキー ===== */
+.keypad {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 60;
+  padding: 10px 10px calc(10px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line);
+  background: #121214;
+  transform: translateY(100%);
+  transition: transform 0.2s ease;
+}
+
+.keypad.open {
+  transform: translateY(0);
+}
+
+.keypad button {
+  height: 50px;
+  border: none;
+  border-radius: 12px;
+  background: var(--field);
+  color: var(--text);
+  font: inherit;
+  font-size: 24px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.keypad button:active {
+  background: var(--field-strong);
+}
+
+.keypad button:disabled {
+  opacity: 0.3;
+}
+
+.keypad-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+/* 回数の「−1」「＋1」 */
+.keypad-extra {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.keypad-extra button {
+  flex: 1;
+  height: 40px;
+  font-size: 17px;
+  color: var(--accent);
+}
+
+/* 「次へ」「完了」 */
+.keypad-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.keypad-actions button {
+  font-size: 17px;
+}
+
+.keypad .keypad-done {
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: bold;
+}
+
+/* 入力中の欄：黄緑の枠 */
+.keypad-input.keypad-active {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* 数字が「選択された状態」（次に押した数字で置き換わる） */
+.keypad-input.keypad-replace {
+  background: var(--accent-tint);
+}
+
+/* テンキーが出ている間は、下に余白を足して、入力欄がテンキーに隠れないようにする */
+body.keypad-open main {
+  padding-bottom: 420px;
+}

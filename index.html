@@ -59,7 +59,7 @@
       <div id="record-editor" class="card" hidden>
         <h3 id="editor-title" class="editor-title"></h3>
         <div id="previous-box"></div>
-        <div id="set-list"></div>
+        <div id="set-list" data-keypad-scope></div>
         <button type="button" id="add-set" class="btn btn-secondary btn-block">＋ セットを追加</button>
 
         <label class="field">
@@ -76,7 +76,32 @@
       <h2 class="section-title">この日の記録</h2>
       <div id="record-list"></div>
       <h2 class="section-title section-gap">体重・体脂肪率</h2>
-      <div id="body-card" class="card body-card">
+  <!-- テンキー（数字の入力欄用の、アプリのキーボード） -->
+  <div id="keypad" class="keypad" aria-hidden="true">
+    <div id="keypad-extra" class="keypad-extra" hidden>
+      <button type="button" data-key="minus">−1</button>
+      <button type="button" data-key="plus">＋1</button>
+    </div>
+    <div class="keypad-grid">
+      <button type="button" data-key="1">1</button>
+      <button type="button" data-key="2">2</button>
+      <button type="button" data-key="3">3</button>
+      <button type="button" data-key="4">4</button>
+      <button type="button" data-key="5">5</button>
+      <button type="button" data-key="6">6</button>
+      <button type="button" data-key="7">7</button>
+      <button type="button" data-key="8">8</button>
+      <button type="button" data-key="9">9</button>
+      <button type="button" data-key=".">.</button>
+      <button type="button" data-key="0">0</button>
+      <button type="button" data-key="back" aria-label="1文字消す">⌫</button>
+    </div>
+    <div class="keypad-actions">
+      <button type="button" data-key="next">次へ</button>
+      <button type="button" data-key="done" class="keypad-done">完了</button>
+    </div>
+  </div>      
+      <div id="body-card" class="card body-card" data-keypad-scope>
         <div class="body-header">
           <span id="body-saved-badge" class="body-saved-badge" hidden>✓ 保存済み</span>
         </div>
@@ -84,9 +109,9 @@
         <!-- 入力するとき -->
         <div id="body-input-area">
           <div class="body-row">
-            <input id="body-weight" class="set-input" inputmode="decimal" placeholder="体重">
+            <input id="body-weight" class="set-input keypad-input" inputmode="none" readonly data-keypad="decimal" placeholder="体重">
             <span id="body-weight-unit" class="set-unit">kg</span>
-            <input id="body-fat" class="set-input" inputmode="decimal" placeholder="体脂肪率">
+            <input id="body-fat" class="set-input keypad-input" inputmode="none" readonly data-keypad="decimal" placeholder="体脂肪率">
             <span class="set-unit">%</span>
             <button type="button" id="body-save" class="btn-small btn-save">保存</button>
           </div>
