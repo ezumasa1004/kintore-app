@@ -55,7 +55,7 @@
 
       <button type="button" id="add-exercise-button" class="btn btn-primary btn-block add-exercise">＋ 種目を追加</button>
 
-      <div id="editor-home"></div>      
+      <div id="editor-home"></div>
       <div id="record-editor" class="card" hidden>
         <h3 id="editor-title" class="editor-title"></h3>
         <div id="previous-box"></div>
@@ -76,31 +76,31 @@
       <h2 class="section-title">この日の記録</h2>
       <div id="record-list"></div>
       <h2 class="section-title section-gap">体重・体脂肪率</h2>
-  <!-- テンキー（数字の入力欄用の、アプリのキーボード） -->
-  <div id="keypad" class="keypad" aria-hidden="true">
-    <div id="keypad-extra" class="keypad-extra" hidden>
-      <button type="button" data-key="minus">−1</button>
-      <button type="button" data-key="plus">＋1</button>
-    </div>
-    <div class="keypad-grid">
-      <button type="button" data-key="1">1</button>
-      <button type="button" data-key="2">2</button>
-      <button type="button" data-key="3">3</button>
-      <button type="button" data-key="4">4</button>
-      <button type="button" data-key="5">5</button>
-      <button type="button" data-key="6">6</button>
-      <button type="button" data-key="7">7</button>
-      <button type="button" data-key="8">8</button>
-      <button type="button" data-key="9">9</button>
-      <button type="button" data-key=".">.</button>
-      <button type="button" data-key="0">0</button>
-      <button type="button" data-key="back" aria-label="1文字消す">⌫</button>
-    </div>
-    <div class="keypad-actions">
-      <button type="button" data-key="next">次へ</button>
-      <button type="button" data-key="done" class="keypad-done">完了</button>
-    </div>
-  </div>      
+      <!-- テンキー（数字の入力欄用の、アプリのキーボード） -->
+      <div id="keypad" class="keypad" aria-hidden="true">
+        <div id="keypad-extra" class="keypad-extra" hidden>
+          <button type="button" data-key="minus">−1</button>
+          <button type="button" data-key="plus">＋1</button>
+        </div>
+        <div class="keypad-grid">
+          <button type="button" data-key="1">1</button>
+          <button type="button" data-key="2">2</button>
+          <button type="button" data-key="3">3</button>
+          <button type="button" data-key="4">4</button>
+          <button type="button" data-key="5">5</button>
+          <button type="button" data-key="6">6</button>
+          <button type="button" data-key="7">7</button>
+          <button type="button" data-key="8">8</button>
+          <button type="button" data-key="9">9</button>
+          <button type="button" data-key=".">.</button>
+          <button type="button" data-key="0">0</button>
+          <button type="button" data-key="back" aria-label="1文字消す">⌫</button>
+        </div>
+        <div class="keypad-actions">
+          <button type="button" data-key="next">次へ</button>
+          <button type="button" data-key="done" class="keypad-done">完了</button>
+        </div>
+      </div>
       <div id="body-card" class="card body-card" data-keypad-scope>
         <div class="body-header">
           <span id="body-saved-badge" class="body-saved-badge" hidden>✓ 保存済み</span>
@@ -109,9 +109,11 @@
         <!-- 入力するとき -->
         <div id="body-input-area">
           <div class="body-row">
-            <input id="body-weight" class="set-input keypad-input" inputmode="none" readonly data-keypad="decimal" placeholder="体重">
+            <input id="body-weight" class="set-input keypad-input" inputmode="none" readonly data-keypad="decimal"
+              placeholder="体重">
             <span id="body-weight-unit" class="set-unit">kg</span>
-            <input id="body-fat" class="set-input keypad-input" inputmode="none" readonly data-keypad="decimal" placeholder="体脂肪率">
+            <input id="body-fat" class="set-input keypad-input" inputmode="none" readonly data-keypad="decimal"
+              placeholder="体脂肪率">
             <span class="set-unit">%</span>
             <button type="button" id="body-save" class="btn-small btn-save">保存</button>
           </div>
@@ -129,7 +131,7 @@
             </div>
           </div>
         </div>
-      </div>      
+      </div>
       <h2 class="section-title section-gap">写真</h2>
       <div class="card">
         <div class="photo-buttons">
@@ -181,38 +183,59 @@
     </section>
 
     <section id="view-graph" class="view">
-      <div class="card">
-        <div class="field-label">種目</div>
-        <button type="button" id="graph-exercise" class="picker-button">
-          <span id="graph-exercise-dot" class="part-dot" hidden></span>
-          <span id="graph-exercise-name" class="picker-name"></span>
-          <span class="picker-chevron">›</span>
-        </button>
-
-        <div class="field-label">指標</div>
-        <div id="graph-metric" class="segmented graph-metrics"></div>
-
-        <div class="field-label">期間</div>
-        <div id="graph-periods" class="segmented">
-          <button type="button" data-period="1m">1か月</button>
-          <button type="button" data-period="3m">3か月</button>
-          <button type="button" data-period="1y">1年</button>
-          <button type="button" data-period="all">全期間</button>
-        </div>
+      <div id="graph-mode" class="segmented graph-mode">
+        <button type="button" data-mode="graph" class="active">グラフ</button>
+        <button type="button" data-mode="photos">写真</button>
       </div>
 
-      <div class="card">
-        <div class="graph-heading">
-          <span id="graph-title" class="graph-title"></span>
-          <span id="graph-subtitle" class="graph-subtitle"></span>
+      <div id="graph-content">
+        <div class="card">
+          <div class="field-label">種目</div>
+          <button type="button" id="graph-exercise" class="picker-button">
+            <span id="graph-exercise-dot" class="part-dot" hidden></span>
+            <span id="graph-exercise-name" class="picker-name"></span>
+            <span class="picker-chevron">›</span>
+          </button>
+
+          <div class="field-label">指標</div>
+          <div id="graph-metric" class="segmented graph-metrics"></div>
+
+          <div class="field-label">期間</div>
+          <div id="graph-periods" class="segmented">
+            <button type="button" data-period="1m">1か月</button>
+            <button type="button" data-period="3m">3か月</button>
+            <button type="button" data-period="1y">1年</button>
+            <button type="button" data-period="all">全期間</button>
+          </div>
         </div>
-        <div id="chart-wrap" class="chart-wrap">
-          <canvas id="graph-canvas"></canvas>
+
+        <div class="card">
+          <div class="graph-heading">
+            <span id="graph-title" class="graph-title"></span>
+            <span id="graph-subtitle" class="graph-subtitle"></span>
+          </div>
+          <div id="chart-wrap" class="chart-wrap">
+            <canvas id="graph-canvas"></canvas>
+          </div>
+          <p id="graph-empty" class="empty" hidden></p>
         </div>
-        <p id="graph-empty" class="empty" hidden></p>
-      </div>
 
       <div id="graph-summary" class="graph-summary" hidden></div>
+      </div>
+
+      <div id="photo-gallery" hidden>
+        <div class="card">
+          <div class="field-label">写真の種類</div>
+          <div id="gallery-filter" class="segmented gallery-filter"></div>
+
+          <div class="field-label">並び順</div>
+          <div id="gallery-order" class="segmented">
+            <button type="button" data-order="asc">古い順</button>
+            <button type="button" data-order="desc">新しい順</button>
+          </div>
+        </div>
+        <div id="gallery-list"></div>
+      </div>
     </section>
 
     <section id="view-settings" class="view">
@@ -220,7 +243,7 @@
       <div class="settings-caption">種目の管理</div>
       <div class="card settings-group">
         <button type="button" id="exercise-add-row" class="settings-row settings-action">＋ 種目を登録</button>
-        <button type="button" id="preset-add-row" class="settings-row settings-action">おすすめの種目を追加</button>        
+        <button type="button" id="preset-add-row" class="settings-row settings-action">おすすめの種目を追加</button>
 
         <form id="exercise-form" class="settings-form" hidden>
           <label class="field">
@@ -340,7 +363,7 @@
       </div>
       <div id="choice-sheet-list"></div>
     </div>
-  </div>  
+  </div>
 
   <!-- 日付を選ぶカレンダー（画面の真ん中に出るポップアップ） -->
   <div id="date-picker" class="popup-backdrop">
@@ -373,10 +396,14 @@
   <!-- 写真の全画面表示 -->
   <div id="photo-viewer" class="viewer" role="dialog" aria-label="写真">
     <div class="viewer-top">
-      <span id="viewer-count" class="viewer-count"></span>
+      <div class="viewer-info">
+        <div id="viewer-date" class="viewer-date"></div>
+        <div id="viewer-count" class="viewer-count"></div>
+      </div>
       <button type="button" id="viewer-close" class="sheet-close" aria-label="閉じる">×</button>
     </div>
     <img id="viewer-image" class="viewer-image" alt="">
+    <div id="viewer-poses" class="segmented viewer-poses"></div>
     <div class="viewer-bottom">
       <button type="button" id="viewer-prev" class="btn-icon">‹</button>
       <button type="button" id="viewer-delete" class="btn-small btn-danger">削除</button>
@@ -395,6 +422,7 @@
       <button type="button" id="camera-close" class="sheet-close" aria-label="閉じる">×</button>
     </div>
 
+    <div id="camera-poses" class="segmented camera-poses"></div>    
     <div class="camera-bottom">
       <div></div>
       <button type="button" id="camera-shutter" class="camera-shutter" aria-label="撮影する"></button>

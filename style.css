@@ -1959,3 +1959,83 @@ div.settings-row {
 body.keypad-open main {
   padding-bottom: 420px;
 }
+
+/* ===== グラフタブ：グラフ｜写真 ===== */
+.graph-mode {
+  margin-bottom: 12px;
+}
+
+/* ===== 写真の一覧 ===== */
+.gallery-filter {
+  margin-bottom: 14px;
+}
+
+.gallery-day {
+  margin-bottom: 18px;
+}
+
+.gallery-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 4px 8px;
+}
+
+.gallery-date {
+  font-size: 15px;
+  font-weight: bold;
+}
+
+.gallery-body {
+  font-size: 13px;
+  color: var(--accent);
+}
+
+.gallery-day .photo-grid {
+  margin-top: 0;
+}
+
+/* 小さな写真の左下の印 */
+.photo-thumb {
+  position: relative;
+}
+
+.photo-pose {
+  position: absolute;
+  left: 4px;
+  bottom: 4px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 10px;
+  font-weight: bold;
+}
+
+/* ===== 全画面表示：日付・体重と印 ===== */
+.viewer-info {
+  min-width: 0;
+}
+
+.viewer-date {
+  font-size: 15px;
+  font-weight: bold;
+}
+
+.viewer-poses {
+  margin-bottom: 12px;
+}
+
+/* ===== カメラ：印の切り替え ===== */
+.camera-poses {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: calc(130px + env(safe-area-inset-bottom));
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.camera-poses button {
+  color: #fff;
+}

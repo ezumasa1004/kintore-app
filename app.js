@@ -340,7 +340,7 @@ const views = document.querySelectorAll(".view");
 const pageTitle = document.querySelector("#page-title");
 
 function showView(name) {
-  closeKeypad();   
+  closeKeypad();
   views.forEach((view) => view.classList.remove("active"));
   tabs.forEach((tab) => tab.classList.remove("active"));
 
@@ -351,10 +351,10 @@ function showView(name) {
 
   pageTitle.textContent = tab.querySelector(".tab-label").textContent;
   if (name === "graph") {
-    // グラフタブを開いたら、毎回「体重」から表示する
+    // グラフタブを開いたら、グラフは毎回「体重」から表示する
     graphExerciseId = "body";
     graphMetricId = null;
-    renderGraph();
+    applyGraphMode(); // 「グラフ｜写真」の選んでいるほうを表示する
   }
 }
 
@@ -744,7 +744,7 @@ function openEditor(exerciseId) {
 }
 
 function closeEditor() {
-  closeKeypad();  
+  closeKeypad();
   draft = null;
   recordEditor.hidden = true;
   renderRecordList(); // 入力画面を元の場所に戻し、カードを表示し直す
@@ -2610,6 +2610,28 @@ datePicker.addEventListener("click", (event) => {
 });
 
 // ===== 写真 =====
+// 写真の印（ポーズ）
+const POSES = [
+  { id: "front", name: "フロント" },
+  { id: "back", name: "バック" },
+  { id: "side", name: "サイド" },
+  { id: "other", name: "その他" },
+];
+
+// 印のIDから名前を返す（印がなければ ""）
+function poseName(poseId) {
+  const pose = POSES.find((p) => p.id === poseId);
+  return pose === undefined ? "" : pose.name;
+}
+
+// 「なし｜フロント｜バック｜サイド｜その他」の切り替えボタンのHTML
+function poseButtonsHtml(selected) {
+  const current = selected === null || selected === undefined ? "" : selected;
+  const items = [{ id: "", name: "なし" }, ...POSES];
+  return items
+    .map((p) => `<button type="button" data-pose="${p.id}" class="${p.id === current ? "active" : ""}">${p.name}</button>`)
+    .join("");
+}
 const PHOTO_DB_NAME = "kintore-photos"; // 写真用のデータベースの名前
 const PHOTO_STORE = "photos";           // 写真を入れる入れ物の名前
 const PHOTO_MAX_SIZE = 1280;            // 長い辺を何ピクセルに縮めるか
@@ -2665,6 +2687,13 @@ async function deletePhoto(id) {
   const db = await openPhotoDb();
   const store = db.transaction(PHOTO_STORE, "readwrite").objectStore(PHOTO_STORE);
   await requestToPromise(store.delete(id));
+}
+
+// 写真を上書き保存する（印を変えたときなど）
+async function putPhoto(photo) {
+  const db = await openPhotoDb();
+  const store = db.transaction(PHOTO_STORE, "readwrite").objectStore(PHOTO_STORE);
+  await requestToPromise(store.put(photo));
 }
 
 // すべての写真を取り出す
@@ -2764,14 +2793,19 @@ function forgetPhotoUrl(id) {
   }
 }
 
+// 小さな写真1枚分のHTML（index は、全画面表示で何枚目として開くか）
+function photoThumbHtml(photo, index) {
+  const pose = poseName(photo.pose);
+  return `
+    <button type="button" class="photo-thumb" data-index="${index}">
+      <img src="${photoUrl(photo)}" alt="" loading="lazy">
+      ${pose === "" ? "" : `<span class="photo-pose">${pose}</span>`}
+    </button>`;
+}
+
 // 小さな写真の一覧のHTML
 function photoThumbsHtml(photos) {
-  return photos
-    .map((p, i) => `
-      <button type="button" class="photo-thumb" data-index="${i}">
-        <img src="${photoUrl(p)}" alt="">
-      </button>`)
-    .join("");
+  return photos.map((p, i) => photoThumbHtml(p, i)).join("");
 }
 
 // --- 記録タブの写真の欄 ---
@@ -2818,7 +2852,7 @@ photoInput.addEventListener("change", async () => {
   try {
     for (const file of files) {
       const blob = await compressImage(file);
-      await addPhoto({ id: createId(), date: date, blob: blob, createdAt: Date.now() });
+      await addPhoto({ id: createId(), date: date, blob: blob, createdAt: Date.now(), pose: null });
     }
     requestPersistentStorage();
   } catch (error) {
@@ -2876,6 +2910,7 @@ function refreshPhotoViews() {
   renderCalendarPhotos();
   renderPhotoSummary();
   resetPhotoExport(); // 写真が変わったら、準備済みのZIPファイルは古くなるので作り直す
+  if (galleryMode === "photos") renderGallery(); // 写真の一覧を開いていれば描き直す
 }
 
 // --- 全画面表示 ---
@@ -2886,6 +2921,8 @@ const viewerClose = document.querySelector("#viewer-close");
 const viewerPrev = document.querySelector("#viewer-prev");
 const viewerNext = document.querySelector("#viewer-next");
 const viewerDelete = document.querySelector("#viewer-delete");
+const viewerDate = document.querySelector("#viewer-date");
+const viewerPoses = document.querySelector("#viewer-poses");
 
 let viewerPhotos = []; // 全画面表示で切り替える写真の一覧
 let viewerIndex = 0;   // 今表示している写真の番号
@@ -2907,6 +2944,14 @@ function renderViewer() {
   const photo = viewerPhotos[viewerIndex];
   viewerImage.src = photoUrl(photo);
   viewerCount.textContent = `${viewerIndex + 1} / ${viewerPhotos.length}`;
+
+  // 日付と、その日の体重・体脂肪率
+  const body = findBodyRecord(photo.date);
+  viewerDate.textContent = galleryDateText(photo.date) + (body === null ? "" : `　${formatBody(body)}`);
+
+  // 印の切り替え
+  viewerPoses.innerHTML = poseButtonsHtml(photo.pose);
+
   viewerPrev.disabled = viewerIndex === 0;
   viewerNext.disabled = viewerIndex === viewerPhotos.length - 1;
 }
@@ -2952,6 +2997,26 @@ viewerDelete.addEventListener("click", async () => {
   refreshPhotoViews();
 });
 
+// 印を付ける・直す
+viewerPoses.addEventListener("click", async (event) => {
+  const button = event.target.closest("button[data-pose]");
+  if (button === null) return;
+
+  const photo = viewerPhotos[viewerIndex];
+  photo.pose = button.dataset.pose === "" ? null : button.dataset.pose;
+
+  try {
+    await putPhoto(photo);
+  } catch (error) {
+    console.error(error);
+    alert("印を保存できませんでした：" + error.message);
+    return;
+  }
+
+  renderViewer();
+  refreshPhotoViews(); // 一覧の小さな写真の印も更新する
+});
+
 // ===== カメラ =====
 const CAMERA_COUNTDOWN = 3; // カウントダウンの秒数
 
@@ -2964,6 +3029,13 @@ const cameraSaved = document.querySelector("#camera-saved");
 const cameraClose = document.querySelector("#camera-close");
 const cameraShutter = document.querySelector("#camera-shutter");
 const cameraSwitch = document.querySelector("#camera-switch");
+const cameraPoses = document.querySelector("#camera-poses");
+
+let cameraPose = null; // カメラで撮る写真に付ける印（アプリを閉じるまで覚えておく）
+
+function renderCameraPoses() {
+  cameraPoses.innerHTML = poseButtonsHtml(cameraPose);
+}
 
 let cameraStream = null;    // カメラの映像の流れ
 let cameraFacing = "user";  // "user"：前のカメラ、"environment"：後ろのカメラ
@@ -3030,6 +3102,7 @@ async function openCamera() {
   cameraFacing = "user"; // いつも前のカメラから
   cameraSavedCount = 0;
   cameraSaved.textContent = "";
+  renderCameraPoses();
   cameraOpen = true;
   camera.classList.add("open");
   document.body.style.overflow = "hidden";
@@ -3094,7 +3167,7 @@ cameraShutter.addEventListener("click", async () => {
   if (finished) {
     try {
       const blob = await captureFrame();
-      await addPhoto({ id: createId(), date: date, blob: blob, createdAt: Date.now() });
+      await addPhoto({ id: createId(), date: date, blob: blob, createdAt: Date.now(), pose: cameraPose });
       requestPersistentStorage();
 
       cameraSavedCount++;
@@ -3125,6 +3198,15 @@ document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "hidden" && cameraOpen) closeCamera();
 });
 
+// 撮る写真の印を切り替える
+cameraPoses.addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-pose]");
+  if (button === null) return;
+
+  cameraPose = button.dataset.pose === "" ? null : button.dataset.pose;
+  renderCameraPoses();
+});
+
 // ===== 写真のバックアップ =====
 const photoExportButton = document.querySelector("#photo-export-button");
 const photoImportButton = document.querySelector("#photo-import-button");
@@ -3133,17 +3215,26 @@ const photoSummary = document.querySelector("#photo-summary");
 
 let preparedPhotoZip = null; // 準備ができたZIPファイル（まだなければ null）
 
-// 写真のファイル名に、日付・撮った時刻・IDを入れておく
-// 例：kintore_2026-10-15_1760500000000_lx3k9abc.jpg
+// 写真のファイル名に、日付・撮った時刻・ID・印を入れておく
+// 例：kintore_2026-10-15_1760500000000_lx3k9abc_front.jpg（印がなければ最後の _front がない）
 function photoFileName(photo) {
-  return `kintore_${photo.date}_${photo.createdAt}_${photo.id}.jpg`;
+  const pose = photo.pose ? `_${photo.pose}` : "";
+  return `kintore_${photo.date}_${photo.createdAt}_${photo.id}${pose}.jpg`;
 }
 
-// ファイル名から、日付・撮った時刻・IDを取り出す（このアプリの写真でなければ null）
+// ファイル名から、日付・撮った時刻・ID・印を取り出す（このアプリの写真でなければ null）
+// 印がない、前の形のファイル名も読める
 function parsePhotoFileName(name) {
-  const match = name.match(/^kintore_(\d{4}-\d{2}-\d{2})_(\d+)_([0-9a-z]+)\.jpe?g$/i);
+  const match = name.match(
+    /^kintore_(\d{4}-\d{2}-\d{2})_(\d+)_([0-9a-z]+)(?:_(front|back|side|other))?\.jpe?g$/i
+  );
   if (match === null) return null;
-  return { date: match[1], createdAt: Number(match[2]), id: match[3] };
+  return {
+    date: match[1],
+    createdAt: Number(match[2]),
+    id: match[3],
+    pose: match[4] === undefined ? null : match[4].toLowerCase(),
+  };
 }
 
 // バイト数をMBにする（例：7340032 → "7.0"）
@@ -3269,7 +3360,7 @@ photoImportInput.addEventListener("change", async () => {
 
       const data = await entry.async("blob");
       const blob = new Blob([data], { type: "image/jpeg" });
-      await addPhoto({ id: info.id, date: info.date, blob: blob, createdAt: info.createdAt });
+      await addPhoto({ id: info.id, date: info.date, blob: blob, createdAt: info.createdAt, pose: info.pose });
       added++;
     }
 
@@ -3682,6 +3773,151 @@ document.addEventListener("click", (event) => {
   if (keypadTarget === null) return;
   if (event.target.closest("#keypad") !== null) return; // テンキーの中なら何もしない
   closeKeypad();
+});
+
+// ===== 写真の一覧（グラフタブ） =====
+const graphMode = document.querySelector("#graph-mode");
+const graphContent = document.querySelector("#graph-content");
+const photoGallery = document.querySelector("#photo-gallery");
+const galleryFilterBox = document.querySelector("#gallery-filter");
+const galleryOrderBox = document.querySelector("#gallery-order");
+const galleryList = document.querySelector("#gallery-list");
+
+let galleryMode = "graph";   // "graph"：グラフ、"photos"：写真の一覧
+let galleryFilter = "all";   // "all" か、印のID（"front" など）
+let galleryOrder = "asc";    // "asc"：古い順、"desc"：新しい順
+let galleryPhotos = [];      // 一覧に表示している写真（表示している順番）
+let galleryRenderId = 0;     // 描き直しの番号（古い描き直しの結果を使わないため）
+
+// 一覧と全画面表示の日付（今年でない日は、年も付ける）
+function galleryDateText(dateText) {
+  const year = dateText.slice(0, 4);
+  const thisYear = String(new Date().getFullYear());
+  return (year === thisYear ? "" : `${year}年`) + formatLongDate(dateText);
+}
+
+// 「グラフ｜写真」の切り替えに合わせて、表示する部分を変える
+function applyGraphMode() {
+  graphMode.querySelectorAll("button").forEach((button) => {
+    button.classList.toggle("active", button.dataset.mode === galleryMode);
+  });
+
+  const isPhotos = galleryMode === "photos";
+  graphContent.hidden = isPhotos;
+  photoGallery.hidden = !isPhotos;
+
+  if (isPhotos) {
+    renderGallery();
+  } else {
+    renderGraph(); // 表示されてから描く（隠れている間はグラフの大きさが測れないため）
+  }
+}
+
+function renderGalleryControls() {
+  const items = [{ id: "all", name: "すべて" }, ...POSES];
+  galleryFilterBox.innerHTML = items
+    .map((p) => `<button type="button" data-filter="${p.id}" class="${p.id === galleryFilter ? "active" : ""}">${p.name}</button>`)
+    .join("");
+
+  galleryOrderBox.querySelectorAll("button").forEach((button) => {
+    button.classList.toggle("active", button.dataset.order === galleryOrder);
+  });
+}
+
+async function renderGallery() {
+  renderGalleryControls();
+  const renderId = ++galleryRenderId;
+
+  let photos;
+  try {
+    photos = await getAllPhotos();
+  } catch (error) {
+    console.error(error);
+    galleryList.innerHTML = `<p class="empty">写真を読み込めませんでした</p>`;
+    return;
+  }
+
+  // 読み込んでいる間に、もう一度描き直しが始まっていたら、この結果は使わない
+  if (renderId !== galleryRenderId) return;
+
+  // 種類で絞り込む
+  if (galleryFilter !== "all") {
+    photos = photos.filter((p) => p.pose === galleryFilter);
+  }
+
+  // 日付の古い順（同じ日は撮った順）に並べる。新しい順なら逆にする
+  photos.sort((a, b) => {
+    if (a.date !== b.date) return a.date < b.date ? -1 : 1;
+    return a.createdAt - b.createdAt;
+  });
+  if (galleryOrder === "desc") photos.reverse();
+
+  galleryPhotos = photos;
+
+  if (photos.length === 0) {
+    galleryList.innerHTML = galleryFilter === "all"
+      ? `<p class="empty">写真はまだありません</p>`
+      : `<p class="empty">この種類の写真はありません</p>`;
+    return;
+  }
+
+  // 同じ日付の写真をまとめて、日付と体重の見出しを付ける
+  let html = "";
+  let i = 0;
+  while (i < photos.length) {
+    const date = photos[i].date;
+    let thumbs = "";
+    while (i < photos.length && photos[i].date === date) {
+      thumbs += photoThumbHtml(photos[i], i);
+      i++;
+    }
+
+    const body = findBodyRecord(date);
+    html += `
+      <div class="gallery-day">
+        <div class="gallery-head">
+          <span class="gallery-date">${galleryDateText(date)}</span>
+          ${body === null ? "" : `<span class="gallery-body">${formatBody(body)}</span>`}
+        </div>
+        <div class="photo-grid">${thumbs}</div>
+      </div>`;
+  }
+
+  galleryList.innerHTML = html;
+}
+
+// 「グラフ｜写真」の切り替え
+graphMode.addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-mode]");
+  if (button === null) return;
+
+  galleryMode = button.dataset.mode;
+  applyGraphMode();
+});
+
+// 写真の種類
+galleryFilterBox.addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-filter]");
+  if (button === null) return;
+
+  galleryFilter = button.dataset.filter;
+  renderGallery();
+});
+
+// 並び順
+galleryOrderBox.addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-order]");
+  if (button === null) return;
+
+  galleryOrder = button.dataset.order;
+  renderGallery();
+});
+
+// 小さな写真を押したら、一覧の順番のまま全画面で表示する
+galleryList.addEventListener("click", (event) => {
+  const thumb = event.target.closest(".photo-thumb");
+  if (thumb === null) return;
+  openViewer(galleryPhotos, Number(thumb.dataset.index));
 });
 
 // ===== 起動画面 =====
