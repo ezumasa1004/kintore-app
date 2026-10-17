@@ -746,6 +746,7 @@ function closeEditor() {
   draft = null;
   recordEditor.hidden = true;
   renderRecordList(); // 入力画面を元の場所に戻し、カードを表示し直す
+  openUpdateSheetIfReady(); // 入力中に新しいバージョンが見つかっていたら、ここでお知らせを出す
 }
 
 function closeEditor() {
@@ -2446,7 +2447,9 @@ importFile.addEventListener("change", async () => {
 });
 
 // ===== PWA（オフライン対応と更新） =====
-const updateBanner = document.querySelector("#update-banner");
+const updateSheet = document.querySelector("#update-sheet");
+const updateVersion = document.querySelector("#update-version");
+const updateNotes = document.querySelector("#update-notes");
 const updateButton = document.querySelector("#update-button");
 
 let waitingWorker = null; // 待機中の新しいバージョン
@@ -2471,7 +2474,7 @@ async function registerServiceWorker() {
 
   // すでに新しいバージョンが待機中なら、お知らせを出す
   if (registration.waiting && navigator.serviceWorker.controller) {
-    showUpdateBanner(registration.waiting);
+    showUpdateSheet(registration.waiting);
   }
 
   // 新しいバージョンが見つかったとき
@@ -2479,7 +2482,7 @@ async function registerServiceWorker() {
     const newWorker = registration.installing;
     newWorker.addEventListener("statechange", () => {
       if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
-        showUpdateBanner(newWorker);
+        showUpdateSheet(newWorker);
       }
     });
   });
@@ -2490,13 +2493,49 @@ async function registerServiceWorker() {
   });
 }
 
-function showUpdateBanner(worker) {
+// 新しいバージョン（の sw.js）に、更新内容を問い合わせる
+// 返事がなければ（古い sw.js など）、2秒であきらめて null を返す
+function askReleaseNotes(worker) {
+  return new Promise((resolve) => {
+    const channel = new MessageChannel();
+    const timer = setTimeout(() => resolve(null), 2000);
+
+    channel.port1.onmessage = (event) => {
+      clearTimeout(timer);
+      resolve(event.data);
+    };
+
+    worker.postMessage("getReleaseNotes", [channel.port2]);
+  });
+}
+
+// お知らせの中身を用意して、出せるときに出す
+async function showUpdateSheet(worker) {
   waitingWorker = worker;
-  updateBanner.hidden = false;
+
+  const info = await askReleaseNotes(worker);
+  updateVersion.textContent = info === null ? "" : info.version;
+
+  const notes = info === null ? [] : info.notes;
+  updateNotes.innerHTML = notes.length === 0
+    ? `<li>アプリが新しくなりました</li>`
+    : notes.map((note) => `<li>${escapeHtml(note)}</li>`).join("");
+
+  openUpdateSheetIfReady();
+}
+
+// 記録の入力中でなければ、お知らせを出す（入力中なら、入力画面を閉じたときに出す）
+function openUpdateSheetIfReady() {
+  if (waitingWorker === null) return;
+  if (draft !== null) return;
+
+  updateSheet.classList.add("open");
+  document.body.style.overflow = "hidden";
 }
 
 updateButton.addEventListener("click", () => {
-  if (draft !== null && !confirm("入力中の記録は破棄されます。更新しますか？")) return;
+  updateButton.disabled = true;
+  updateButton.textContent = "更新中…";
   waitingWorker.postMessage("skipWaiting");
 });
 

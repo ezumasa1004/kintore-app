@@ -1846,3 +1846,24 @@ div.settings-row {
   font-size: 14px;
   color: var(--muted);
 }
+
+/* ===== アップデートのお知らせ ===== */
+.update-version {
+  padding: 3px 8px;
+  border-radius: 8px;
+  background: var(--accent-tint);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.update-notes {
+  margin: 14px 0 18px;
+  padding-left: 20px;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.update-notes li + li {
+  margin-top: 6px;
+}

@@ -1,6 +1,13 @@
 // ===== キャッシュの名前（＝アプリのバージョン） =====
 // ⚠️ アプリを更新するときは、必ずこの数字を増やす（v1 → v2 → v3 …）
-const CACHE_NAME = "kintore-v27";
+const CACHE_NAME = "kintore-v28";
+
+// ===== 更新内容（アップデートのお知らせに表示される） =====
+// ⚠️ アプリを更新するときは、CACHE_NAME と一緒に、ここも必ず書き換える
+// 友達が読んで分かる言葉で、1つの変更を1行ずつ書く
+const RELEASE_NOTES = [
+  "アップデートのとき、更新内容が表示されるようになりました",
+];
 
 // オフラインでも使えるように保存しておくファイル
 const FILES = [
@@ -51,7 +58,19 @@ self.addEventListener("fetch", (event) => {
   event.respondWith(respond(event.request));
 });
 
-// --- アプリから「更新して」と言われたら、すぐに新しいバージョンに切り替える ---
+// --- アプリからの連絡を受け取る ---
 self.addEventListener("message", (event) => {
-  if (event.data === "skipWaiting") self.skipWaiting();
+  // 「更新して」と言われたら、すぐに新しいバージョンに切り替える
+  if (event.data === "skipWaiting") {
+    self.skipWaiting();
+    return;
+  }
+
+  // 「更新内容を教えて」と言われたら、バージョンと更新内容を返す
+  if (event.data === "getReleaseNotes") {
+    event.ports[0].postMessage({
+      version: CACHE_NAME.replace("kintore-", ""), // "kintore-v28" → "v28"
+      notes: RELEASE_NOTES,
+    });
+  }
 });

@@ -383,9 +383,17 @@
     </div>
   </div>
 
-  <div id="update-banner" class="update-banner" hidden>
-    <span>新しいバージョンがあります</span>
-    <button type="button" id="update-button" class="btn-small">更新する</button>
+  <!-- アップデートのお知らせ（下から出てくるシート） -->
+  <div id="update-sheet" class="sheet-backdrop">
+    <div class="sheet" role="dialog" aria-label="アップデートのお知らせ">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <span class="sheet-title">アップデートのお知らせ</span>
+        <span id="update-version" class="update-version"></span>
+      </div>
+      <ul id="update-notes" class="update-notes"></ul>
+      <button type="button" id="update-button" class="btn btn-primary btn-block">更新する</button>
+    </div>
   </div>
 
   <nav class="tab-bar">
