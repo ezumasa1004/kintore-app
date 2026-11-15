@@ -1995,9 +1995,12 @@ const METRICS = {
 // 期間ごとに何か月さかのぼるか（null は全期間）
 const PERIOD_MONTHS = { "1m": 1, "3m": 3, "1y": 12, "all": null };
 // 体重・体脂肪率の指標。value は体重の記録1つから値を取り出す関数
+// 体重・体脂肪率の指標。value は体重の記録1つから値を取り出す関数
+// weekly が true の指標は、週ごとの平均を計算して表示する
 const BODY_METRICS = [
   { id: "weight", name: "体重", unit: "weight", value: (b) => b.weight },
   { id: "fat", name: "体脂肪率", unit: "%", value: (b) => b.fat },
+  { id: "weekly", name: "週平均", unit: "weight", weekly: true },
 ];
 
 const graphExercise = document.querySelector("#graph-exercise");
@@ -2077,6 +2080,7 @@ function graphExerciseGroups() {
   return groups;
 }
 
+
 // 種目のボタン・指標のボタン・期間のボタンの表示を整える
 function renderGraphControls() {
   const recordedIds = new Set(data.records.map((r) => r.exerciseId));
@@ -2142,8 +2146,91 @@ function showGraphEmpty(message) {
   }
   chartWrap.hidden = true;
   graphSummary.hidden = true;
+  weeklyList.hidden = true;
   graphEmpty.hidden = false;
   graphEmpty.textContent = message;
+}
+
+// --- 週ごとの体重の平均 ---
+const weeklyList = document.querySelector("#weekly-list");
+
+// 日付に日数を足す（"2026-11-10" に 6 を足す → "2026-11-16"）
+function addDays(dateText, days) {
+  const date = fromDateString(dateText);
+  date.setDate(date.getDate() + days);
+  return toDateString(date);
+}
+
+// その日を含む週の、月曜日の日付
+function weekStartOf(dateText) {
+  const date = fromDateString(dateText);
+  const daysFromMonday = (date.getDay() + 6) % 7; // 月曜=0, 火曜=1, …, 日曜=6
+  date.setDate(date.getDate() - daysFromMonday);
+  return toDateString(date);
+}
+
+// 週ごとの体重の平均（古い週から順）
+// 例）[{ date: "2026-11-03", value: 70.8, days: 7 }, ...]　date はその週の月曜日
+function weeklyBodyAverages() {
+  const weeks = {}; // 月曜日の日付 → その週の体重の一覧
+  for (const b of data.bodyWeights) {
+    const start = weekStartOf(b.date);
+    if (weeks[start] === undefined) weeks[start] = [];
+    weeks[start].push(b.weight);
+  }
+
+  return Object.keys(weeks)
+    .sort()
+    .map((start) => {
+      const list = weeks[start];
+      const average = list.reduce((sum, w) => sum + w, 0) / list.length;
+      return { date: start, value: average, days: list.length };
+    });
+}
+
+// グラフの下の「週ごとの平均」の一覧（週平均でないときは points に null を渡して隠す）
+function renderWeeklyList(points, values, label) {
+  if (points === null) {
+    weeklyList.hidden = true;
+    return;
+  }
+
+  const thisWeek = weekStartOf(toDateString(new Date()));
+  let rows = "";
+
+  // 新しい週から順に並べる
+  for (let i = points.length - 1; i >= 0; i--) {
+    const p = points[i];
+    const range = `${formatShortDate(p.date)}〜${formatShortDate(addDays(p.date, 6))}`;
+    const daysText = p.date === thisWeek ? `今週・${p.days}日分` : `${p.days}日分`;
+
+    // 1つ前の週との差（一番古い週にはない）
+    let diffHtml = "";
+    if (i > 0) {
+      const diff = Math.round((values[i] - values[i - 1]) * 100) / 100;
+      let sign = "±";
+      if (diff > 0) sign = "+";
+      if (diff < 0) sign = "−";
+      diffHtml = `<span class="weekly-diff">${sign}${formatNumber(Math.abs(diff))}${label}</span>`;
+    }
+
+    rows += `
+      <div class="weekly-row">
+        <div class="weekly-top">
+          <span class="weekly-range">${range}</span>
+          <span class="weekly-days">${daysText}</span>
+        </div>
+        <div class="weekly-bottom">
+          <span class="weekly-value">${values[i]}<small>${label}</small></span>
+          ${diffHtml}
+        </div>
+      </div>`;
+  }
+
+  weeklyList.innerHTML = `
+    <h2 class="section-title section-gap">週ごとの平均</h2>
+    <div class="card weekly-card">${rows}</div>`;
+  weeklyList.hidden = false;
 }
 
 function renderGraph() {
@@ -2167,7 +2254,10 @@ function renderGraph() {
 
   // 体重でも種目でも、{ date, value } という同じ形のリストにそろえる
   let points;
-  if (isBody) {
+  if (isBody && metric.weekly) {
+    // 週平均：週ごとの平均の点にする
+    points = weeklyBodyAverages();
+  } else if (isBody) {
     points = data.bodyWeights
       .filter((b) => metric.value(b) !== null) // 体脂肪率がない日は除く
       .map((b) => ({ date: b.date, value: metric.value(b) }));
@@ -2241,6 +2331,7 @@ function renderGraph() {
 
   // 体重は増減のどちらが良いとは言えないので、色を付けない
   renderGraphSummary(points, values, label, !isBody);
+  renderWeeklyList(metric.weekly ? points : null, values, label);
 }
 
 // グラフの下のまとめ

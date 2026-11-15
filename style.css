@@ -2039,3 +2039,55 @@ body.keypad-open main {
 .camera-poses button {
   color: #fff;
 }
+
+/* ===== 週ごとの体重の平均 ===== */
+.weekly-card {
+  padding: 4px 16px;
+}
+
+.weekly-row {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.weekly-row:last-child {
+  border-bottom: none;
+}
+
+.weekly-top,
+.weekly-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.weekly-range {
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.weekly-days {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.weekly-bottom {
+  margin-top: 4px;
+}
+
+.weekly-value {
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.weekly-value small {
+  margin-left: 2px;
+  font-size: 13px;
+  font-weight: normal;
+  color: var(--muted);
+}
+
+.weekly-diff {
+  font-size: 15px;
+  color: var(--muted);
+}
